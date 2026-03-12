@@ -1,69 +1,33 @@
 import os
 import sys
-import time
-import xgboost as xgb
-import pickle
 import json
+import pickle
+import xgboost as xgb
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 from api.routes import claims, health
+from api.middleware import (
+    RequestIDMiddleware,
+    SecurityHeadersMiddleware,
+    RateLimitMiddleware,
+)
+from monitoring.logger import get_logger
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# APP INITIALISATION
-
-app = FastAPI(
-    title       = "Ginja Claims Adjudication Engine",
-    description = """
-AI-powered healthcare claims adjudication system for emerging markets.
-
-## Capabilities
-- **Single claim adjudication** via JSON payload
-- **Batch adjudication** via JSON array or CSV upload
-- **PDF claim extraction** via vision model (Gemini / Ollama / Qwen)
-- **Three-stage adjudication**: basic validation -> detailed validation -> ML scoring
-- **Full audit trail** saved to MongoDB
-
-## Decision Logic
-| Risk Score | Decision |
-|------------|----------|
-| 0.0 – 0.3  | ✅ Pass   |
-| 0.3 – 0.7  | ⚠️ Flag   |
-| 0.7 – 1.0  | ❌ Fail   |
-    """,
-    version     = "1.0.0",
-    docs_url    = "/docs",
-    redoc_url   = "/redoc",
-)
-
-# CORS
-# Allows the Next.js dashboard to call this API
-# In production, I'd restrict origins to your domain
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins = ["*"],
-    allow_credentials = True,
-    allow_methods = ["*"],
-    allow_headers = ["*"],
-)
+logger = get_logger(__name__)
 
 
-# MODEL PRELOADING
-# Load model artifacts once at startup so every request is fast — not on first request
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting Ginja Claims Adjudication Engine")
 
-@app.on_event("startup")
-async def load_model():
-    """
-    Preloads the XGBoost model and SHAP explainer
-    into memory when the server starts.
-    Subsequent requests use the cached objects.
-    """
     try:
         model = xgb.XGBClassifier()
         model.load_model("model/artifacts/xgboost_model.json")
@@ -74,38 +38,93 @@ async def load_model():
         with open("model/artifacts/feature_columns.json") as f:
             feature_columns = json.load(f)
 
-        # Store on app state so routes can access them
         app.state.model = model
         app.state.explainer = explainer
         app.state.feature_columns = feature_columns
 
-        print("Model artifacts loaded successfully at startup")
+        logger.info("Model artifacts loaded successfully")
+
     except Exception as e:
-        print(f"Warning: Could not preload model: {e}")
+        logger.error(f"Failed to load model artifacts: {e}")
+        raise
+
+    yield
+
+    logger.info("Shutting down Ginja Claims Adjudication Engine")
 
 
-# REQUEST TIMING MIDDLEWARE
-# Adds X-Process-Time header to every responset to monitor latency from any client
+app = FastAPI(
+    title = "Ginja Claims Adjudication Engine",
+    description = """
+        AI-powered healthcare claims adjudication for East Africa (Kenya and Rwanda).
 
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    start    = time.time()
-    response = await call_next(request)
-    response.headers["X-Process-Time"] = str(
-        round((time.time() - start) * 1000, 2)
-    ) + "ms"
-    return response
+        ## Auth
+        All endpoints except /health require an API key in the X-API-Key header.
+
+        ## Decision Logic
+        | Risk Score | Decision |
+        |------------|----------|
+        | 0.0 to 0.3 -> Pass
+        | 0.3 to 0.7 -> Flag
+        | 0.7 to 1.0 -> Fail
+
+        ## Adjudication Stages
+        1. Basic validation (format, completeness, date checks)
+        2. Clinical validation (code checks, financial hard rules)
+        3. ML scoring (XGBoost + SHAP explainability)
+    """,
+    version = "1.0.0",
+    docs_url = "/docs",
+    redoc_url = "/redoc",
+    lifespan = lifespan,
+)
+
+# Middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins  = os.getenv("ALLOWED_ORIGINS", "*").split(","),
+    allow_methods  = ["GET", "POST"],
+    allow_headers  = ["*"],
+)
 
 
-app.include_router(health.router,  prefix="/api/v1")
-app.include_router(claims.router,  prefix="/api/v1")
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Catches any unhandled exception and returns a structured
+    error response rather than exposing a stack trace.
+
+    Stack traces must never be returned to API clients in
+    production as they reveal internal implementation details.
+    """
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}",
+        extra={"request_id": request_id, "error": str(exc)}
+    )
+    return JSONResponse(
+        status_code = 500,
+        content = {
+            "error": "Internal server error",
+            "request_id": request_id,
+            "message": "An unexpected error occurred. Quote the request_id when reporting this issue.",
+        }
+    )
 
 
-@app.get("/", tags=["System"])
+app.include_router(health.router, prefix="/api/v1")
+app.include_router(claims.router, prefix="/api/v1")
+
+
+@app.get("/", tags=["System"], include_in_schema=False)
 async def root():
     return {
         "service": "Ginja Claims Adjudication Engine",
         "version": "1.0.0",
-        "docs":    "/docs",
-        "health":  "/api/v1/health",
+        "region": "East Africa (Kenya, Rwanda)",
+        "docs": "/docs",
+        "health": "/api/v1/health",
     }

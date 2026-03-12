@@ -186,3 +186,8 @@ API DOCS: ```http://localhost:8000/docs```
 
 
 
+# Tests
+```python -m pytest tests/ -v```
+
+
+
