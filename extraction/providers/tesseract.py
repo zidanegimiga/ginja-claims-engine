@@ -55,7 +55,7 @@ class TesseractProvider(BaseVisionProvider):
         in the extracted text.
 
         Regular expressions are patterns that match text —
-        for example r'\d{2}/\d{2}/\d{4}' matches dates
+        for example r'\\d{2}/\\d{2}/\\d{4}' matches dates
         in DD/MM/YYYY format.
         """
         fields = {}
