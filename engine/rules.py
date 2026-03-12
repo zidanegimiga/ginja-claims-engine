@@ -98,6 +98,10 @@ def run_stage_one(claim: dict) -> dict:
             dos = datetime.fromisoformat(
                 str(date_str).replace("Z", "")
             )
+            if dos > datetime.now():
+                failures.append(
+                    "Date of service cannot be in the future"
+                )
             checks_run.append("claim_not_stale")
             if dos < datetime.now() - timedelta(days=MAX_CLAIM_AGE_DAYS):
                 failures.append(
@@ -141,7 +145,7 @@ def run_stage_two(claim: dict) -> dict:
     hard_overrides = []
     soft_flags = []
 
-    # ── ICD-10 diagnosis code ──
+    # --- ICD-10 diagnosis code
     # In East African paper claims, diagnosis is often written
     # in plain English rather than coded. We flag for review
     # rather than failing — a human reviewer or LLM can
@@ -164,7 +168,7 @@ def run_stage_two(claim: dict) -> dict:
                 f"ICD-10 code mapping required during review"
             )
 
-    # ── CPT procedure code ──
+    # --- CPT procedure code
     # Same reasoning — paper invoices use descriptions not codes
     checks_run.append("procedure_code_valid")
     procedure_code = claim.get("procedure_code")
@@ -180,7 +184,7 @@ def run_stage_two(claim: dict) -> dict:
                 f"CPT code mapping required during review"
             )
 
-    # ── Line item total vs claimed amount ──
+    # --- Line item total vs claimed amount
     # If line items were extracted, verify they add up
     # to the claimed amount. A mismatch is a fraud signal.
     checks_run.append("line_items_sum")
@@ -203,7 +207,7 @@ def run_stage_two(claim: dict) -> dict:
         except (TypeError, ValueError):
             pass
 
-    # ── Hard override: amount more than 3x tariff ──
+    # --- Hard override: amount more than 3x tariff
     # Only applies when we have a tariff to compare against
     checks_run.append("hard_amount_override")
     tariff = float(claim.get("approved_tariff") or 0)
