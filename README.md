@@ -176,3 +176,13 @@ amount_deviation_pct is second — how much above tariff is the strongest financ
 code_match is third — mismatched diagnosis and procedure codes are a strong fraud indicator
 is_duplicate scored zero — this is because our duplicate detection in synthetic data wasn't frequent enough to create a learnable pattern.
 
+
+
+# API SETUP
+
+Run `python -m uvicorn api.main:app --reload --port 8000`
+
+API DOCS: ```http://localhost:8000/docs```
+
+
+

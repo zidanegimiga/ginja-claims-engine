@@ -197,3 +197,29 @@ Reasons:
   • Provider has submitted 35 claims — significantly above average
 Processing   : 8ms
 ```
+
+
+
+Set upload limits, upload file types, rate limiting. Enforce security standards and authentication through JWT.
+
+Ensure Readme.md is constantly updated
+
+Before testing the extraction
+```brew install tesseract```
+
+
+### When testing the extraction of data from the pdf:
+Gemini is working and extracting real data from the actual claim form. That's a significant milestone. Let me address everything.
+What Gemini successfully extracted:
+
+Claim ID, Member ID, Patient name, Amount (17,000 KES), Date of service, Location (Kigali), Provider type, Age
+Even noted the date discrepancy between treatment (2025) and signatures (2026) — that's intelligent extraction
+
+What's missing and why:
+`provider_id` — the form doesn't have one, it uses provider name instead. This is a real-world gap we need to handle — Kenyan/East African claim forms don't always have structured provider IDs
+diagnosis_code and procedure_code — the form has descriptions ("Dental Caries", "Fillings") but no ICD-10 or CPT codes. This is also realistic — many paper forms use free text
+
+Real-world claims from emerging markets often lack structured codes. 
+Our system should handle partial extraction gracefully and flag missing codes for manual completion rather than hard failing.
+
+
