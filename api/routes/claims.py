@@ -43,7 +43,6 @@ async def adjudicate_claim(claim: ClaimRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.post(
     "/adjudicate/batch",
     tags=["Claims"],
@@ -76,6 +75,61 @@ async def adjudicate_batch(batch: BatchClaimRequest):
         "processed": len(results),
         "errors":    len(errors),
         "results":   results,
+        "error_details": errors,
+    }
+
+
+@router.post(
+    "/adjudicate/upload/csv",
+    tags=["Claims"],
+    summary="Upload a CSV file of claims",
+    description="Upload a CSV file. Each row is adjudicated and results returned."
+)
+async def adjudicate_csv(file: UploadFile = File(...)):
+    """
+    CSV file upload endpoint.
+    Reads each row as a claim, adjudicates it,
+    and returns all results.
+    """
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only CSV files are accepted at this endpoint"
+        )
+
+    try:
+        contents  = await file.read()
+        dataframe = pd.read_csv(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not parse CSV: {e}")
+
+    results = []
+    errors  = []
+
+    for _, row in dataframe.iterrows():
+        try:
+            raw_claim = row.to_dict()
+            # Convert NaN values to None
+            raw_claim = {
+                k: (None if pd.isna(v) else v)
+                for k, v in raw_claim.items()
+            }
+            result = adjudicate(raw_claim)
+            await save_adjudication_result(result)
+            log_adjudication(result)
+            results.append(result)
+        except Exception as e:
+            errors.append({
+                "row":   int(row.get("claim_id", "unknown")),
+                "error": str(e)
+            })
+
+    return {
+        "filename": file.filename,
+        "total": len(dataframe),
+        "processed": len(results),
+        "errors": len(errors),
+        "results": results,
         "error_details": errors,
     }
 
