@@ -325,95 +325,230 @@ elif page == "🔍 Adjudicate Claim":
 
 elif page == "📄 Upload PDF":
     st.title("📄 PDF Claim Extraction & Adjudication")
-    st.caption("Upload a claim form or invoice PDF for automatic extraction and adjudication")
+    st.caption(
+        "Upload a claim form, invoice, or both together. "
+        "When both are provided the system cross-references them "
+        "for additional fraud signals."
+    )
 
     col_info1, col_info2, col_info3 = st.columns(3)
     col_info1.info("☁️ **Gemini** — Best for handwritten forms")
     col_info2.info("🖥️ **Ollama/Qwen** — Fully offline, privacy-first")
     col_info3.info("📄 **Tesseract** — Digital PDFs, no API needed")
 
-    uploaded = st.file_uploader(
-        "Upload PDF claim form or invoice",
-        type=["pdf"],
-    )
+    st.subheader("Document Upload")
+    col_up1, col_up2 = st.columns(2)
+
+    with col_up1:
+        st.caption("Claim Form (required or optional)")
+        claim_form_file = st.file_uploader(
+            "Upload claim form PDF",
+            type = ["pdf"],
+            key = "claim_form_upload",
+        )
+
+    with col_up2:
+        st.caption("Supporting Invoice (optional)")
+        invoice_file = st.file_uploader(
+            "Upload invoice PDF",
+            type = ["pdf"],
+            key = "invoice_upload",
+        )
 
     col_prov, col_mod = st.columns(2)
     selected_provider = col_prov.selectbox(
         "Vision Provider",
         ["gemini", "ollama", "qwen", "tesseract"],
-        index=0,
+        index = 0,
+        key = "pdf_provider",
     )
     selected_model = col_mod.text_input(
         "Model override (optional)",
-        placeholder="Leave blank to use default",
+        placeholder = "Leave blank to use default",
+        key = "pdf_model",
     )
 
-    if uploaded:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(uploaded.read())
-            tmp_path = tmp.name
+    # Determine what was uploaded
+    has_claim_form = claim_form_file is not None
+    has_invoice = invoice_file is not None
+    has_both = has_claim_form and has_invoice
 
-        with st.spinner(f"Extracting with {selected_provider}..."):
+    if has_both:
+        st.success(
+            "✅ Both documents uploaded — cross-reference validation will run"
+        )
+    elif has_claim_form:
+        st.info("📋 Claim form uploaded — single document adjudication")
+    elif has_invoice:
+        st.info("🧾 Invoice uploaded — single document adjudication")
+
+    if has_claim_form or has_invoice:
+        if st.button("⚡ Extract & Adjudicate", use_container_width=True):
             from extraction.fallback import extract_with_fallback
-            extracted = extract_with_fallback(
-                tmp_path,
-                provider = selected_provider,
-                model    = selected_model or None,
-            )
-            os.unlink(tmp_path)
+            from extraction.cross_reference import cross_reference, merge_documents
+            from engine.adjudicator import adjudicate
+            from extraction.validator import validate_extracted_claim
+            import asyncio
+            from db.mongo import save_adjudication_result
 
-        st.subheader("Extraction Result")
+            extracted_form    = None
+            extracted_invoice = None
 
-        col_e1, col_e2, col_e3 = st.columns(3)
-        col_e1.metric("Valid for Adjudication", "✅ Yes" if extracted["is_valid"] else "❌ No")
-        col_e2.metric("Confidence",  extracted.get("confidence", "unknown"))
-        col_e3.metric("Provider Used", extracted.get("provider_used", "unknown"))
+            # Extract claim form
+            if has_claim_form:
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".pdf"
+                ) as tmp:
+                    tmp.write(claim_form_file.read())
+                    tmp_path = tmp.name
+                with st.spinner("Extracting claim form..."):
+                    extracted_form = extract_with_fallback(
+                        tmp_path,
+                        provider = selected_provider,
+                        model    = selected_model or None,
+                    )
+                os.unlink(tmp_path)
+                st.success("✅ Claim form extracted")
 
-        if extracted.get("extraction_warnings"):
-            for w in extracted["extraction_warnings"]:
-                st.warning(f"⚠️ {w}")
+            # Extract invoice
+            if has_invoice:
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".pdf"
+                ) as tmp:
+                    tmp.write(invoice_file.read())
+                    tmp_path = tmp.name
+                with st.spinner("Extracting invoice..."):
+                    extracted_invoice = extract_with_fallback(
+                        tmp_path,
+                        provider = selected_provider,
+                        model = selected_model or None,
+                    )
+                os.unlink(tmp_path)
+                st.success("✅ Invoice extracted")
 
-        if extracted.get("validation_errors"):
-            for e in extracted["validation_errors"]:
-                st.error(f"✗ {e}")
-
-        # Show extracted fields
-        st.subheader("Extracted Fields")
-        skip = {"raw_text", "extraction_warnings", "validation_errors",
-                "is_valid", "fallback_attempts", "provider_used"}
-        field_data = {
-            k: v for k, v in extracted.items()
-            if k not in skip and v is not None
-        }
-        st.json(field_data)
-
-        if extracted["is_valid"]:
-            if st.button("⚡ Proceed to Adjudication", use_container_width=True):
-                from engine.adjudicator import adjudicate
-                import asyncio
-                from db.mongo import save_adjudication_result
-
-                with st.spinner("Adjudicating..."):
-                    result = adjudicate(extracted)
-                    asyncio.run(save_adjudication_result(result))
-
-                st.divider()
-                st.subheader("Adjudication Result")
-                col_r1, col_r2, col_r3 = st.columns(3)
-                col_r1.markdown(
-                    f"**Decision**<br>{decision_badge(result['decision'])}",
-                    unsafe_allow_html=True
+            # Cross-reference if both present
+            if has_both:
+                st.subheader("🔍 Cross-Reference Analysis")
+                cross_ref = cross_reference(extracted_form, extracted_invoice)
+                merged = merge_documents(
+                    extracted_form, extracted_invoice, cross_ref
                 )
-                col_r2.metric("Risk Score", f"{result['risk_score']:.4f}")
-                col_r3.metric("Confidence", f"{result['confidence']:.4f}")
 
-                st.info(f"📋 {result['explanation_of_benefits']}")
+                col_cr1, col_cr2, col_cr3 = st.columns(3)
+                col_cr1.metric(
+                    "Documents Consistent",
+                    "✅ Yes" if cross_ref["is_consistent"] else "⚠️ No"
+                )
+                col_cr2.metric(
+                    "Cross-Ref Score",
+                    f"{cross_ref['cross_ref_score']:.2f}"
+                )
+                col_cr3.metric(
+                    "Summary",
+                    cross_ref["summary"]
+                )
 
-                for reason in result.get("reasons", []):
-                    st.write(f"• {reason}")
+                if cross_ref["confirmations"]:
+                    with st.expander("✅ Confirmed matches"):
+                        for c in cross_ref["confirmations"]:
+                            st.write(f"✓ {c}")
 
-                with st.expander("Full Result JSON"):
-                    st.json({k: v for k, v in result.items() if k != "audit_trail"})
+                if cross_ref["mismatches"]:
+                    with st.expander(
+                        f"⚠️ {len(cross_ref['mismatches'])} mismatches detected",
+                        expanded=True
+                    ):
+                        for m in cross_ref["mismatches"]:
+                            severity_color = (
+                                "🔴" if m["severity"] == "high" else "🟡"
+                            )
+                            st.write(
+                                f"{severity_color} **{m['field']}**: "
+                                f"claim form=`{m.get('claim_form')}` "
+                                f"vs invoice=`{m.get('invoice')}`"
+                            )
+
+                final_claim = merged
+
+            else:
+                # Single document
+                final_claim = extracted_form or extracted_invoice
+
+            # Show extraction summary
+            st.subheader("Extracted Data")
+            skip = {
+                "raw_text", "extraction_warnings", "validation_errors",
+                "is_valid", "fallback_attempts", "provider_used",
+                "cross_reference", "cross_ref_fraud_signals",
+            }
+            display_data = {
+                k: v for k, v in final_claim.items()
+                if k not in skip and v is not None
+            }
+            st.json(display_data)
+
+            if final_claim.get("extraction_warnings"):
+                with st.expander("Extraction warnings"):
+                    for w in final_claim["extraction_warnings"]:
+                        st.warning(f"⚠️ {w}")
+
+            # Adjudicate
+            st.subheader("Adjudication Result")
+            with st.spinner("Adjudicating..."):
+                result = adjudicate(final_claim)
+                asyncio.run(save_adjudication_result(result))
+
+            col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+            col_r1.markdown(
+                f"**Decision**<br>{decision_badge(result['decision'])}",
+                unsafe_allow_html=True
+            )
+            col_r2.metric("Risk Score",  f"{result['risk_score']:.4f}")
+            col_r3.metric("Confidence",  f"{result['confidence']:.4f}")
+            col_r4.metric("Stage",       f"Stage {result['adjudication_stage']}")
+
+            st.info(f"📋 {result['explanation_of_benefits']}")
+
+            if result.get("reasons"):
+                st.subheader("Decision Reasons")
+                for reason in result["reasons"]:
+                    icon = (
+                        "🔴" if result["decision"] == "Fail"
+                        else "🟡" if result["decision"] == "Flag"
+                        else "🟢"
+                    )
+                    st.write(f"{icon} {reason}")
+
+            if result.get("feature_contributions"):
+                contrib_df = pd.DataFrame([
+                    {
+                        "Feature":      k,
+                        "Contribution": v,
+                        "Direction":    "→ Fraud" if v > 0 else "→ Legitimate"
+                    }
+                    for k, v in result["feature_contributions"].items()
+                ]).sort_values("Contribution", key=abs, ascending=True)
+
+                fig = px.bar(
+                    contrib_df,
+                    x           = "Contribution",
+                    y           = "Feature",
+                    color       = "Direction",
+                    color_discrete_map = {
+                        "→ Fraud":      "#dc3545",
+                        "→ Legitimate": "#28a745",
+                    },
+                    orientation = "h",
+                    title       = "Feature contributions to this decision",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            with st.expander("Full Result JSON"):
+                st.json({
+                    k: v for k, v in result.items()
+                    if k != "audit_trail"
+                })
+
 
 
 # PAGE: BATCH UPLOAD
