@@ -44,4 +44,39 @@ async def adjudicate_claim(claim: ClaimRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post(
+    "/adjudicate/batch",
+    tags=["Claims"],
+    summary="Adjudicate multiple claims from JSON",
+    description="Submit an array of claims and receive decisions for all of them."
+)
+async def adjudicate_batch(batch: BatchClaimRequest):
+    """
+    Batch adjudication from a JSON array.
+    Processes each claim sequentially and returns all results.
+    """
+    results = []
+    errors  = []
+
+    for claim in batch.claims:
+        try:
+            raw_claim = claim.model_dump()
+            result    = adjudicate(raw_claim)
+            await save_adjudication_result(result)
+            log_adjudication(result)
+            results.append(result)
+        except Exception as e:
+            errors.append({
+                "claim_id": claim.claim_id,
+                "error":    str(e)
+            })
+
+    return {
+        "total":     len(batch.claims),
+        "processed": len(results),
+        "errors":    len(errors),
+        "results":   results,
+        "error_details": errors,
+    }
+
 
