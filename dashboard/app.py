@@ -165,7 +165,7 @@ if page == "📊 Dashboard":
                 hole    = 0.4,
             )
             fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
         with col_right:
             st.subheader("Risk Score Distribution")
@@ -179,7 +179,7 @@ if page == "📊 Dashboard":
                     labels = {"risk_score": "Risk Score", "count": "Claims"},
                 )
                 fig2.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-                st.plotly_chart(fig2, use_container_width=True)
+                st.plotly_chart(fig2, width="stretch")
 
         # Recent Claims Table
         st.subheader("Recent Adjudications")
@@ -191,7 +191,7 @@ if page == "📊 Dashboard":
         if display_cols:
             st.dataframe(
                 df[display_cols].head(20),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -240,7 +240,7 @@ elif page == "🔍 Adjudicate Claim":
         member_freq   = col12.number_input("Member Claim Frequency", min_value=0, value=2)
         provider_freq = col13.number_input("Provider Claim Frequency", min_value=0, value=8)
 
-        submitted = st.form_submit_button("⚡ Adjudicate", use_container_width=True)
+        submitted = st.form_submit_button("⚡ Adjudicate", width="stretch")
 
     if submitted:
         from engine.adjudicator import adjudicate
@@ -314,7 +314,7 @@ elif page == "🔍 Adjudicate Claim":
                 orientation = "h",
                 title = "Which features drove this decision",
             )
-            st.plotly_chart(fig3, use_container_width=True)
+            st.plotly_chart(fig3, width="stretch")
 
         with st.expander("Full Result JSON"):
             display = {k: v for k, v in result.items() if k != "audit_trail"}
@@ -383,7 +383,7 @@ elif page == "📄 Upload PDF":
         st.info("🧾 Invoice uploaded — single document adjudication")
 
     if has_claim_form or has_invoice:
-        if st.button("⚡ Extract & Adjudicate", use_container_width=True):
+        if st.button("⚡ Extract & Adjudicate", width="stretch"):
             from extraction.fallback import extract_with_fallback
             from extraction.cross_reference import cross_reference, merge_documents
             from engine.adjudicator import adjudicate
@@ -541,7 +541,7 @@ elif page == "📄 Upload PDF":
                     orientation = "h",
                     title       = "Feature contributions to this decision",
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with st.expander("Full Result JSON"):
                 st.json({
@@ -576,9 +576,9 @@ elif page == "📁 Batch Upload":
     if uploaded_csv:
         df = pd.read_csv(uploaded_csv)
         st.write(f"Loaded {len(df)} claims")
-        st.dataframe(df.head(5), use_container_width=True)
+        st.dataframe(df.head(5), width="stretch")
 
-        if st.button("⚡ Process All Claims", use_container_width=True):
+        if st.button("⚡ Process All Claims", width="stretch"):
             from engine.adjudicator import adjudicate
             import asyncio
             from db.mongo import save_adjudication_result
@@ -610,7 +610,7 @@ elif page == "📁 Batch Upload":
 
             results_df = pd.DataFrame(results)
             display    = [c for c in ["claim_id", "decision", "risk_score", "confidence"] if c in results_df.columns]
-            st.dataframe(results_df[display], use_container_width=True)
+            st.dataframe(results_df[display], width="stretch")
 
             decision_counts = results_df["decision"].value_counts()
             col1, col2, col3 = st.columns(3)
