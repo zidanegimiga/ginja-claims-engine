@@ -8,3 +8,4 @@ model/artifacts
 *.note
 *.pdf
 .pytest_cache
+node_modules
