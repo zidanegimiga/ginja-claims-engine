@@ -52,7 +52,7 @@ def adjudicate(raw_claim: dict) -> dict:
 
     audit_trail = []
 
-    # STAGE 1
+    # ----- STAGE 1
     stage_one = run_stage_one(raw_claim)
     audit_trail.append({
         "stage":      1,
@@ -75,7 +75,7 @@ def adjudicate(raw_claim: dict) -> dict:
             feature_contributions = {},
         )
 
-    # STAGE 2
+    # ------ STAGE 2
     stage_two = run_stage_two(raw_claim)
     audit_trail.append({
         "stage":          2,
@@ -119,37 +119,51 @@ def adjudicate(raw_claim: dict) -> dict:
     stage_two_flags = stage_two.get("soft_flags", [])
 
 
-    # STAGE 3: ML Scoring
+    # ------- STAGE 3: ML Scoring
+    
+    # If cross-reference was run on multiple documents, incorporate those fraud signals into the final decision
+    cross_ref_signals = raw_claim.get("cross_ref_fraud_signals", [])
+    cross_ref_score   = float(raw_claim.get("cross_ref_score") or 0)
+
     features = engineer_features(raw_claim)
     ml_result = predict_claim(features)
 
-    # Combine ML reasons with Stage 2 soft flags
-    all_reasons = ml_result["reasons"] + stage_two_flags
+    # Blend ML score with cross-reference score
+    # Cross-reference mismatches add direct evidence of fraud
+    # Weight: 70% ML score, 30% cross-reference score
+    if cross_ref_score > 0:
+        blended_score = round(
+            (ml_result["risk_score"] * 0.7) + (cross_ref_score * 0.3), 4
+        )
+    else:
+        blended_score = ml_result["risk_score"]
+    
+    from model.predict import score_to_decision
 
-    # If soft flags exist and ML score is borderline Pass,
-    # escalate to Flag — incomplete documentation warrants review
-    final_decision = ml_result["decision"]
-    final_score    = ml_result["risk_score"]
+    final_decision = score_to_decision(blended_score)
+    all_reasons = ml_result["reasons"] + cross_ref_signals + stage_two_flags
 
     if stage_two_flags and final_decision == "Pass":
         final_decision = "Flag"
-        final_score = max(final_score, 0.35)
-        all_reasons = [
+        blended_score  = max(blended_score, 0.35)
+        all_reasons  = [
             "Claim escalated to manual review due to missing clinical codes"
-        ] + stage_two_flags
+        ] + stage_two_flags + cross_ref_signals
 
     audit_trail.append({
-        "stage":      3,
-        "timestamp":  datetime.now(timezone.utc).isoformat(),
-        "risk_score": final_score,
+        "stage": 3,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "ml_score": ml_result["risk_score"],
+        "cross_ref_score": cross_ref_score,
+        "blended_score": blended_score,
         "confidence": ml_result["confidence"],
-        "decision":   final_decision,
+        "decision": final_decision,
     })
 
     return _build_result(
         raw_claim = raw_claim,
         decision = final_decision,
-        risk_score = final_score,
+        risk_score = blended_score,
         confidence = ml_result["confidence"],
         reasons = all_reasons,
         stage_failed = None,
