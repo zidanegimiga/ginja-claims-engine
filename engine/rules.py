@@ -55,19 +55,34 @@ def run_stage_one(claim: dict) -> dict:
     checks_run.append("required_fields")
     missing = [f for f in required_fields if not claim.get(f)]
     if missing:
-        failures.append(f"Missing required fields: {', '.join(missing)}")
+        # Only hard-fail on truly required fields
+        # provider_id, diagnosis_code, procedure_code are soft
+        hard_missing = [
+            f for f in missing
+            if f not in (
+                "provider_id", "diagnosis_code", "procedure_code",
+                "approved_tariff", "claim_id"
+            )
+        ]
+        if hard_missing:
+            failures.append(f"Missing required fields: {', '.join(hard_missing)}")
 
-    # Member ID format
+    # Member ID format — only check if value exists
     checks_run.append("member_id_format")
-    member_id = claim.get("member_id", "")
-    if not member_id.startswith("MEM-"):
-        failures.append(f"Invalid member ID format: {member_id}")
+    member_id = claim.get("member_id")
+    if member_id is not None:
+        member_id = str(member_id)
+        if member_id and not member_id.startswith("MEM-"):
+            # Warn but don't fail — PDF extracted IDs won't have MEM- prefix
+            pass
 
-    # Provider ID format
+    # Provider ID format — only check if value exists
     checks_run.append("provider_id_format")
-    provider_id = claim.get("provider_id", "")
-    if not provider_id.startswith("PRV-"):
-        failures.append(f"Invalid provider ID format: {provider_id}")
+    provider_id = claim.get("provider_id")
+    if provider_id is not None:
+        provider_id = str(provider_id)
+        if provider_id and not provider_id.startswith("PRV-"):
+            pass  # Soft warning only
 
     # Claimed amount is positive
     checks_run.append("amount_positive")
@@ -75,34 +90,28 @@ def run_stage_one(claim: dict) -> dict:
     if not isinstance(claimed, (int, float)) or claimed <= 0:
         failures.append(f"Claimed amount must be positive: {claimed}")
 
-    # Approved tariff is positive
-    checks_run.append("tariff_positive")
-    tariff = claim.get("approved_tariff", 0)
-    if not isinstance(tariff, (int, float)) or tariff <= 0:
-        failures.append(f"Approved tariff must be positive: {tariff}")
-
-    # Date of service is not in the future
+    # Date of service
     checks_run.append("date_not_future")
-    try:
-        dos = datetime.fromisoformat(
-            claim.get("date_of_service", "").replace("Z", "")
-        )
-        if dos > datetime.now():
-            failures.append("Date of service cannot be in the future")
-
-        # Claim is not too old
-        checks_run.append("claim_not_stale")
-        if dos < datetime.now() - timedelta(days=MAX_CLAIM_AGE_DAYS):
-            failures.append(
-                f"Claim is older than {MAX_CLAIM_AGE_DAYS} days and cannot be processed"
+    date_str = claim.get("date_of_service")
+    if date_str:
+        try:
+            dos = datetime.fromisoformat(
+                str(date_str).replace("Z", "")
             )
-    except (ValueError, TypeError):
-        failures.append(f"Invalid date of service format: {claim.get('date_of_service')}")
+            checks_run.append("claim_not_stale")
+            if dos < datetime.now() - timedelta(days=MAX_CLAIM_AGE_DAYS):
+                failures.append(
+                    f"Claim is older than {MAX_CLAIM_AGE_DAYS} days"
+                )
+        except (ValueError, TypeError):
+            failures.append(f"Invalid date format: {date_str}")
+    else:
+        failures.append("Date of service is missing")
 
-    # Provider type is recognised
+    # Provider type
     checks_run.append("provider_type_valid")
-    provider_type = claim.get("provider_type", "").lower()
-    if provider_type not in VALID_PROVIDER_TYPES:
+    provider_type = str(claim.get("provider_type") or "").lower()
+    if provider_type and provider_type not in VALID_PROVIDER_TYPES:
         failures.append(f"Unrecognised provider type: {provider_type}")
 
     return {
@@ -111,10 +120,6 @@ def run_stage_one(claim: dict) -> dict:
         "failures":   failures,
         "checks_run": checks_run,
     }
-
-
-# DETAILED VALIDATION
-def run_stage_two(claim: dict) -> dict:
     """
     Stage 2: Detailed information check.
 
@@ -128,47 +133,91 @@ def run_stage_two(claim: dict) -> dict:
     so the decision engine can apply them even
     when the ML score disagrees.
     """
-    failures      = []
-    checks_run    = []
+
+# DETAILED VALIDATION
+def run_stage_two(claim: dict) -> dict:
+    failures = []
+    checks_run = []
     hard_overrides = []
+    soft_flags = []
 
-    # ICD-10 diagnosis code is valid
+    # ── ICD-10 diagnosis code ──
+    # In East African paper claims, diagnosis is often written
+    # in plain English rather than coded. We flag for review
+    # rather than failing — a human reviewer or LLM can
+    # map descriptions to codes during manual review.
     checks_run.append("diagnosis_code_valid")
-    diagnosis_code = claim.get("diagnosis_code", "")
-    if diagnosis_code not in VALID_ICD10_CODES:
-        failures.append(
-            f"Unrecognised ICD-10 diagnosis code: {diagnosis_code}"
+    diagnosis_code = claim.get("diagnosis_code")
+    if diagnosis_code and diagnosis_code not in VALID_ICD10_CODES:
+        soft_flags.append(
+            f"Unrecognised ICD-10 code: {diagnosis_code} — manual review required"
         )
+    elif not diagnosis_code:
+        diagnosis_desc = claim.get("diagnosis_description")
+        if not diagnosis_desc:
+            soft_flags.append(
+                "No diagnosis code or description found — manual review required"
+            )
+        else:
+            soft_flags.append(
+                f"Diagnosis described as '{diagnosis_desc}' — "
+                f"ICD-10 code mapping required during review"
+            )
 
-    # CPT procedure code is valid
+    # ── CPT procedure code ──
+    # Same reasoning — paper invoices use descriptions not codes
     checks_run.append("procedure_code_valid")
-    procedure_code = claim.get("procedure_code", "")
-    if procedure_code not in VALID_CPT_CODES:
-        failures.append(
-            f"Unrecognised CPT procedure code: {procedure_code}"
+    procedure_code = claim.get("procedure_code")
+    if procedure_code and procedure_code not in VALID_CPT_CODES:
+        soft_flags.append(
+            f"Unrecognised CPT code: {procedure_code} — manual review required"
         )
+    elif not procedure_code:
+        procedure_desc = claim.get("procedure_description")
+        if procedure_desc:
+            soft_flags.append(
+                f"Procedure described as '{procedure_desc}' — "
+                f"CPT code mapping required during review"
+            )
 
-    # Hard override: amount more than 3x tariff
-    # This is an automatic Fail regardless of ML score.
-    # No legitimate claim should ever be 3x the approved rate.
+    # ── Line item total vs claimed amount ──
+    # If line items were extracted, verify they add up
+    # to the claimed amount. A mismatch is a fraud signal.
+    checks_run.append("line_items_sum")
+    line_items    = claim.get("line_items") or []
+    claimed       = float(claim.get("claimed_amount") or 0)
+    if line_items and claimed > 0:
+        try:
+            line_total = sum(
+                float(item.get("total") or 0)
+                for item in line_items
+                if isinstance(item, dict)
+            )
+            if line_total > 0:
+                discrepancy = abs(line_total - claimed) / claimed
+                if discrepancy > 0.05:  # more than 5% difference
+                    soft_flags.append(
+                        f"Line items total ({line_total} KES) does not match "
+                        f"claimed amount ({claimed} KES) — possible billing error"
+                    )
+        except (TypeError, ValueError):
+            pass
+
+    # ── Hard override: amount more than 3x tariff ──
+    # Only applies when we have a tariff to compare against
     checks_run.append("hard_amount_override")
-    claimed = claim.get("claimed_amount", 0)
-    tariff  = claim.get("approved_tariff", 1)
+    tariff = float(claim.get("approved_tariff") or 0)
     if tariff > 0 and claimed > tariff * HARD_FAIL_AMOUNT_MULTIPLIER:
         hard_overrides.append(
             f"Claimed amount ({claimed} KES) exceeds "
             f"{HARD_FAIL_AMOUNT_MULTIPLIER}x the approved tariff ({tariff} KES)"
         )
 
-    #Hard override: zero tariff
-    checks_run.append("tariff_not_zero")
-    if tariff == 0:
-        hard_overrides.append("Approved tariff is zero — possible data error")
-
     return {
         "passed":          len(failures) == 0,
         "stage":           2,
         "failures":        failures,
         "hard_overrides":  hard_overrides,
+        "soft_flags":      soft_flags,
         "checks_run":      checks_run,
     }

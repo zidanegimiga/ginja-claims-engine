@@ -45,6 +45,11 @@ def adjudicate(raw_claim: dict) -> dict:
                Does NOT need pre-computed features.
     """
     started_at  = datetime.now(timezone.utc)
+    if not raw_claim.get("claim_id"):
+        import uuid
+        raw_claim["claim_id"] = f"CLM-{uuid.uuid4().hex[:8].upper()}"
+
+
     audit_trail = []
 
     # STAGE 1
@@ -73,61 +78,82 @@ def adjudicate(raw_claim: dict) -> dict:
     # STAGE 2
     stage_two = run_stage_two(raw_claim)
     audit_trail.append({
-        "stage": 2,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "passed": stage_two["passed"],
-        "checks_run": stage_two["checks_run"],
-        "failures": stage_two["failures"],
+        "stage":          2,
+        "timestamp":      datetime.now(timezone.utc).isoformat(),
+        "passed":         stage_two["passed"],
+        "checks_run":     stage_two["checks_run"],
+        "failures":       stage_two["failures"],
         "hard_overrides": stage_two["hard_overrides"],
+        "soft_flags":     stage_two.get("soft_flags", []),
     })
 
     if not stage_two["passed"]:
         return _build_result(
-            raw_claim = raw_claim,
-            decision  = "Fail",
-            risk_score = 1.0,
-            confidence = 1.0,
-            reasons = stage_two["failures"],
-            stage_failed = 2,
-            audit_trail = audit_trail,
-            started_at = started_at,
-            feature_contributions = {},
-        )
-
-    # Hard override. Auto Fail regardless of ML score
-    if stage_two["hard_overrides"]:
-        return _build_result(
-            raw_claim  = raw_claim,
-            decision  = "Fail",
-            risk_score  = 1.0,
-            confidence = 1.0,
-            reasons = stage_two["hard_overrides"],
+            raw_claim    = raw_claim,
+            decision     = "Fail",
+            risk_score   = 1.0,
+            confidence   = 1.0,
+            reasons      = stage_two["failures"],
             stage_failed = 2,
             audit_trail  = audit_trail,
-            started_at = started_at,
+            started_at   = started_at,
             feature_contributions = {},
         )
 
-    # STAGE 3
-    features    = engineer_features(raw_claim)
-    ml_result   = predict_claim(features)
+    if stage_two["hard_overrides"]:
+        return _build_result(
+            raw_claim    = raw_claim,
+            decision     = "Fail",
+            risk_score   = 1.0,
+            confidence   = 1.0,
+            reasons      = stage_two["hard_overrides"],
+            stage_failed = 2,
+            audit_trail  = audit_trail,
+            started_at   = started_at,
+            feature_contributions = {},
+        )
+    
+    # Soft flags from Stage 2 are passed into the final result
+    # as additional reasons — they nudge the decision toward Flag
+    # but don't override the ML score entirely
+    stage_two_flags = stage_two.get("soft_flags", [])
+
+
+    # STAGE 3: ML Scoring
+    features = engineer_features(raw_claim)
+    ml_result = predict_claim(features)
+
+    # Combine ML reasons with Stage 2 soft flags
+    all_reasons = ml_result["reasons"] + stage_two_flags
+
+    # If soft flags exist and ML score is borderline Pass,
+    # escalate to Flag — incomplete documentation warrants review
+    final_decision = ml_result["decision"]
+    final_score    = ml_result["risk_score"]
+
+    if stage_two_flags and final_decision == "Pass":
+        final_decision = "Flag"
+        final_score = max(final_score, 0.35)
+        all_reasons = [
+            "Claim escalated to manual review due to missing clinical codes"
+        ] + stage_two_flags
 
     audit_trail.append({
-        "stage": 3,
+        "stage":      3,
         "timestamp":  datetime.now(timezone.utc).isoformat(),
-        "risk_score": ml_result["risk_score"],
+        "risk_score": final_score,
         "confidence": ml_result["confidence"],
-        "decision": ml_result["decision"],
+        "decision":   final_decision,
     })
 
     return _build_result(
-        raw_claim  = raw_claim,
-        decision = ml_result["decision"],
-        risk_score   = ml_result["risk_score"],
-        confidence  = ml_result["confidence"],
-        reasons = ml_result["reasons"],
+        raw_claim = raw_claim,
+        decision = final_decision,
+        risk_score = final_score,
+        confidence = ml_result["confidence"],
+        reasons = all_reasons,
         stage_failed = None,
-        audit_trail  = audit_trail,
+        audit_trail = audit_trail,
         started_at = started_at,
         feature_contributions = ml_result["feature_contributions"],
         features = features,
