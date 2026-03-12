@@ -1,0 +1,10 @@
+[
+  "amount_deviation_pct",
+  "amount_ratio",
+  "code_match",
+  "member_claim_frequency",
+  "provider_claim_frequency",
+  "provider_is_high_risk",
+  "is_duplicate",
+  "member_age"
+]

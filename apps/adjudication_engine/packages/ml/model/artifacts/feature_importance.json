@@ -1,0 +1,34 @@
+[
+  {
+    "feature":"provider_is_high_risk",
+    "importance":2.0842382908
+  },
+  {
+    "feature":"amount_deviation_pct",
+    "importance":1.4174534082
+  },
+  {
+    "feature":"code_match",
+    "importance":0.8225378394
+  },
+  {
+    "feature":"provider_claim_frequency",
+    "importance":0.5169470906
+  },
+  {
+    "feature":"member_age",
+    "importance":0.3547663689
+  },
+  {
+    "feature":"amount_ratio",
+    "importance":0.3358247876
+  },
+  {
+    "feature":"member_claim_frequency",
+    "importance":0.3301224113
+  },
+  {
+    "feature":"is_duplicate",
+    "importance":0.0
+  }
+]

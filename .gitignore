@@ -7,3 +7,4 @@ model/artifacts
 .DS_Store
 *.note
 *.pdf
+.pytest_cache
