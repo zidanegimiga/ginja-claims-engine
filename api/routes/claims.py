@@ -10,7 +10,6 @@ from db.mongo import save_adjudication_result
 
 router = APIRouter()
 
-
 @router.post(
     "/adjudicate",
     response_model=AdjudicationResponse,
@@ -30,7 +29,7 @@ async def adjudicate_claim(claim: ClaimRequest):
     """
     try:
         raw_claim = claim.model_dump()
-        result    = adjudicate(raw_claim)
+        result = adjudicate(raw_claim)
 
         # Save to MongoDB asynchronously
         await save_adjudication_result(result)
@@ -55,26 +54,26 @@ async def adjudicate_batch(batch: BatchClaimRequest):
     Processes each claim sequentially and returns all results.
     """
     results = []
-    errors  = []
+    errors = []
 
     for claim in batch.claims:
         try:
             raw_claim = claim.model_dump()
-            result    = adjudicate(raw_claim)
+            result = adjudicate(raw_claim)
             await save_adjudication_result(result)
             log_adjudication(result)
             results.append(result)
         except Exception as e:
             errors.append({
                 "claim_id": claim.claim_id,
-                "error":    str(e)
+                "error": str(e)
             })
 
     return {
-        "total":     len(batch.claims),
+        "total": len(batch.claims),
         "processed": len(results),
-        "errors":    len(errors),
-        "results":   results,
+        "errors": len(errors),
+        "results": results,
         "error_details": errors,
     }
 
@@ -120,7 +119,7 @@ async def adjudicate_csv(file: UploadFile = File(...)):
             results.append(result)
         except Exception as e:
             errors.append({
-                "row":   int(row.get("claim_id", "unknown")),
+                "row": int(row.get("claim_id", "unknown")),
                 "error": str(e)
             })
 
@@ -159,9 +158,9 @@ async def get_claim(claim_id: str):
     summary="List adjudicated claims with optional filters"
 )
 async def list_claims(
-    decision: str  = Query(default=None, description="Filter by decision: Pass, Flag, Fail"),
-    limit:    int  = Query(default=20,   ge=1, le=100),
-    skip:     int  = Query(default=0,    ge=0),
+    decision: str = Query(default=None, description="Filter by decision: Pass, Flag, Fail"),
+    limit: int = Query(default=20, ge=1, le=100),
+    skip: int = Query(default=0, ge=0),
 ):
     """
     Returns a paginated list of adjudicated claims.
@@ -174,12 +173,8 @@ async def list_claims(
         skip=skip,
     )
     return {
-        "total":   len(results),
-        "skip":    skip,
-        "limit":   limit,
+        "total": len(results),
+        "skip": skip,
+        "limit": limit,
         "results": results,
     }
-
-
-
-
