@@ -153,5 +153,33 @@ async def get_claim(claim_id: str):
     return result
 
 
+@router.get(
+    "/claims",
+    tags=["Claims"],
+    summary="List adjudicated claims with optional filters"
+)
+async def list_claims(
+    decision: str  = Query(default=None, description="Filter by decision: Pass, Flag, Fail"),
+    limit:    int  = Query(default=20,   ge=1, le=100),
+    skip:     int  = Query(default=0,    ge=0),
+):
+    """
+    Returns a paginated list of adjudicated claims.
+    Optionally filter by decision type.
+    """
+    from db.mongo import list_adjudication_results
+    results = await list_adjudication_results(
+        decision=decision,
+        limit=limit,
+        skip=skip,
+    )
+    return {
+        "total":   len(results),
+        "skip":    skip,
+        "limit":   limit,
+        "results": results,
+    }
+
+
 
 
