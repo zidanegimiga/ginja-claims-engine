@@ -2,19 +2,12 @@
   "name": "ginja",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/web"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
-    "lint": "turbo run lint"
-  },
-  "devDependencies": {
-    "turbo": "latest",
-    "prettier": "^3.0.0",
-    "typescript": "^5.3.0"
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build:web": "npm run build --workspace=apps/web",
+    "test:web": "npm run test --workspace=apps/web"
   },
   "engines": {
     "node": ">=24.0.0"
