@@ -106,8 +106,8 @@ def _build_chain(primary: str) -> list[str]:
     Builds the fallback chain starting from the primary provider.
     Removes duplicates while preserving order.
 
-    Example: primary="ollama" → ["ollama", "gemini", "tesseract"]
-    Example: primary="gemini" → ["gemini", "tesseract"]
+    Example: primary="ollama" -> ["ollama", "gemini", "tesseract"]
+    Example: primary="gemini" -> ["gemini", "tesseract"]
     """
     full_chain = ["gemini", "tesseract"]
 

@@ -297,7 +297,7 @@ elif page == "🔍 Adjudicate Claim":
                 {
                     "Feature": k,
                     "Contribution": v,
-                    "Direction": "→ Fraud" if v > 0 else "→ Legitimate"
+                    "Direction": "-> Fraud" if v > 0 else "-> Legitimate"
                 }
                 for k, v in result["feature_contributions"].items()
             ]).sort_values("Contribution", key=abs, ascending=True)
@@ -308,8 +308,8 @@ elif page == "🔍 Adjudicate Claim":
                 y     = "Feature",
                 color = "Direction",
                 color_discrete_map = {
-                    "→ Fraud": "#dc3545",
-                    "→ Legitimate": "#28a745"
+                    "-> Fraud": "#dc3545",
+                    "-> Legitimate": "#28a745"
                 },
                 orientation = "h",
                 title = "Which features drove this decision",
@@ -524,7 +524,7 @@ elif page == "📄 Upload PDF":
                     {
                         "Feature":      k,
                         "Contribution": v,
-                        "Direction":    "→ Fraud" if v > 0 else "→ Legitimate"
+                        "Direction":    "-> Fraud" if v > 0 else "-> Legitimate"
                     }
                     for k, v in result["feature_contributions"].items()
                 ]).sort_values("Contribution", key=abs, ascending=True)
@@ -535,8 +535,8 @@ elif page == "📄 Upload PDF":
                     y           = "Feature",
                     color       = "Direction",
                     color_discrete_map = {
-                        "→ Fraud":      "#dc3545",
-                        "→ Legitimate": "#28a745",
+                        "-> Fraud":      "#dc3545",
+                        "-> Legitimate": "#28a745",
                     },
                     orientation = "h",
                     title       = "Feature contributions to this decision",

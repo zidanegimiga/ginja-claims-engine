@@ -26,7 +26,7 @@ AI-powered healthcare claims adjudication system for emerging markets.
 - **Single claim adjudication** via JSON payload
 - **Batch adjudication** via JSON array or CSV upload
 - **PDF claim extraction** via vision model (Gemini / Ollama / Qwen)
-- **Three-stage adjudication**: basic validation → detailed validation → ML scoring
+- **Three-stage adjudication**: basic validation -> detailed validation -> ML scoring
 - **Full audit trail** saved to MongoDB
 
 ## Decision Logic

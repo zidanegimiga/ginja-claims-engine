@@ -91,7 +91,7 @@ HIGH_RISK_PROVIDERS = set(random.sample(PROVIDER_IDS, 8))
 def compute_amount_deviation(claimed: float, tariff: float) -> float:
     """
     How much more than the approved tariff was claimed, as a percentage.
-    e.g. claimed=5000, tariff=2500 → deviation = 1.0 (100% above tariff)
+    e.g. claimed=5000, tariff=2500 -> deviation = 1.0 (100% above tariff)
     Fraud often shows large positive deviations.
     """
     if tariff == 0:
