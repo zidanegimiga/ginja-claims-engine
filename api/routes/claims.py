@@ -178,3 +178,88 @@ async def list_claims(
         "limit": limit,
         "results": results,
     }
+
+
+@router.post(
+    "/adjudicate/upload/pdf",
+    tags=["Claims"],
+    summary="Upload a PDF claim form for extraction and adjudication",
+    description="""
+    Upload a PDF claim form or invoice.
+    The system extracts structured data using the configured
+    vision provider (Gemini, Ollama, Qwen, or Tesseract),
+    validates the extracted fields, then adjudicates the claim.
+
+    Optionally specify which vision provider and model to use
+    via query parameters.
+    """
+)
+async def adjudicate_pdf(
+    file: UploadFile = File(...),
+    provider: str = Query(
+        default=None,
+        description="Vision provider: gemini, ollama, qwen, tesseract"
+    ),
+    model: str = Query(
+        default=None,
+        description="Model name override e.g. qwen2-vl, llava, gemini-1.5-pro"
+    ),
+):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are accepted at this endpoint"
+        )
+
+    import tempfile
+    import os
+    from extraction.factory import get_vision_provider
+    from extraction.validator import validate_extracted_claim
+
+    # Save uploaded PDF to a temp file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        contents = await file.read()
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        # Get the appropriate vision provider
+        vision_provider = get_vision_provider(provider=provider, model=model)
+
+        # Extract structured data from the PDF
+        extracted = vision_provider.extract(tmp_path)
+
+        # Validate extracted fields
+        validated = validate_extracted_claim(extracted)
+
+        if not validated["is_valid"]:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "error": "PDF extraction incomplete",
+                    "validation_errors": validated["validation_errors"],
+                    "extracted_data": validated,
+                    "suggestion": (
+                        "Try a different vision provider with the ?provider= "
+                        "query parameter. Options: gemini, ollama, qwen, tesseract"
+                    )
+                }
+            )
+
+        # Adjudicate the extracted claim
+        result = adjudicate(validated)
+        result["extraction_metadata"] = {
+            "provider": validated.get("provider_name"),
+            "confidence": validated.get("confidence"),
+            "warnings": validated.get("extraction_warnings", []),
+        }
+
+        await save_adjudication_result(result)
+        log_adjudication(result)
+
+        return result
+
+    finally:
+        # Clean up temp file
+        os.unlink(tmp_path)
+
