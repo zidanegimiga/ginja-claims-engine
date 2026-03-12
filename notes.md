@@ -103,3 +103,40 @@ is_duplicate scored zero — this is because our duplicate detection in syntheti
 Deliberately setting the Pass threshold low (0.3) so borderline cases go to human review rather than being auto-approved. 
 In healthcare, false negatives (missed fraud) are more costly than false positives (unnecessary reviews).
 
+Upon running the model, it outputs:
+```
+(venv) zedane@Zidanes-MacBook-M4 ginja-claims-engine % python model/predict.py
+Running prediction on test claim...
+
+Decision : Fail
+Risk Score : 0.9994
+Confidence : 0.9989
+
+Reasons:
+  • Claimed amount is 194.0% above the approved tariff
+  • Procedure code does not match the submitted diagnosis code
+  • Provider has an elevated risk profile based on historical claim patterns
+
+Feature Contributions (SHAP):
+  provider_is_high_risk            2.7582  -> fraud
+  code_match                       2.4284  -> fraud
+  amount_deviation_pct             2.1954  -> fraud
+  amount_ratio                     0.4540  -> fraud
+  member_age                      -0.4237  -> legitimate
+  provider_claim_frequency        -0.0717  -> legitimate
+  member_claim_frequency          -0.0096  -> legitimate
+  is_duplicate                     0.0000  -> legitimate
+```
+
+The prediction pipeline works exactly as designed. 
+The test claim scored 0.9994. Essentially the model is 99.94% certain it's fraud, and the reasons are clear and human-readable.
+
+The SHAP values tell a clear story:
+- `member_age` actually pushed the score toward legitimate (-0.4237). That means the model learned that a 45-year-old making claims is slightly less suspicious than younger ages in our synthetic data. That's the model finding subtle patterns, not just obvious ones. 
+- `provider_is_high_risk` is the strongest signal — who submits the claim matters most
+- `code_match` is second — mismatched diagnosis and procedure codes are a strong fraud indicator
+- `amount_deviation_pct` is third — how much above tariff is the strongest financial signal
+- `is_duplicate` scored zero — this is because our duplicate detection in synthetic data wasn't frequent enough to create a learnable pattern.
+
+
+
