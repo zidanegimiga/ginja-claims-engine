@@ -66,13 +66,13 @@ class OllamaProvider(BaseVisionProvider):
 
         try:
             import fitz
-            doc    = fitz.open(pdf_path)
+            doc = fitz.open(pdf_path)
             images = []
 
             for page in doc:
-                pix       = page.get_pixmap(dpi=200)
+                pix = page.get_pixmap(dpi=200)
                 img_bytes = pix.tobytes("png")
-                img_b64   = base64.b64encode(img_bytes).decode("utf-8")
+                img_b64 = base64.b64encode(img_bytes).decode("utf-8")
                 images.append(img_b64)
 
             doc.close()
@@ -90,7 +90,7 @@ class OllamaProvider(BaseVisionProvider):
 
             response = requests.post(
                 f"{self.base_url}/api/generate",
-                json    = payload,
+                json = payload,
                 timeout = 120,
             )
             response.raise_for_status()
@@ -101,8 +101,8 @@ class OllamaProvider(BaseVisionProvider):
             extracted = json.loads(raw_text)
             result.update(extracted)
             result["provider_name"] = f"ollama:{active_model}"
-            result["confidence"]    = "medium"
-            result["raw_text"]      = raw_text
+            result["confidence"] = "medium"
+            result["raw_text"] = raw_text
 
         except requests.exceptions.ConnectionError:
             result["extraction_warnings"].append(

@@ -77,7 +77,7 @@ Clone the repository and copy the environment file:
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/ginja-claims-engine.git
-cd ginja-claims-engine
+cd ginja-claims-engine/apps/adjudication_engine
 cp .env.example .env
 ```
 
@@ -165,7 +165,7 @@ ginja-claims-engine/
 Create and activate a virtual environment:
 
 ```bash
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate       # macOS/Linux
 # or
 venv\Scripts\activate          # Windows

@@ -27,17 +27,17 @@ load_dotenv()
 
 def get_registry_collection():
     client = MongoClient(os.getenv("MONGODB_URI"))
-    db     = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
+    db = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
     return db["model_registry"], client
 
 
 def register_model(
-    model_path:        str,
-    metrics:           dict,
-    feature_columns:   list,
-    training_params:   dict,
+    model_path: str,
+    metrics: dict,
+    feature_columns: list,
+    training_params: dict,
     training_data_path: str,
-    description:       str = "",
+    description: str = "",
 ) -> str:
     """
     Registers a newly trained model in the model registry.

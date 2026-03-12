@@ -101,7 +101,7 @@ def detect_drift(
 
     # Load recent production claims from MongoDB
     client = MongoClient(os.getenv("MONGODB_URI"))
-    db     = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
+    db = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
 
     since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
     recent_claims = list(

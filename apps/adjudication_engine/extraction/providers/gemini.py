@@ -82,23 +82,23 @@ class GeminiProvider(BaseVisionProvider):
 
         # New SDK import and initialisation
         from google import genai
-        self.client     = genai.Client(api_key=api_key)
+        self.client = genai.Client(api_key=api_key)
         # self.model_name = "gemini-3-flash-preview"
         self.model_name =  model_name or os.getenv(
             "VISION_MODEL", "gemini-3-flash-preview"
         )
 
     def extract(self, pdf_path: str, model_name: str = None) -> dict:
-        result       = self._empty_result()
+        result = self._empty_result()
         active_model = model_name or self.model_name
 
         try:
             import fitz
-            doc    = fitz.open(pdf_path)
+            doc = fitz.open(pdf_path)
             images = []
 
             for page in doc:
-                pix       = page.get_pixmap(dpi=200)
+                pix = page.get_pixmap(dpi=200)
                 img_bytes = pix.tobytes("png")
                 img_b64   = base64.b64encode(img_bytes).decode("utf-8")
                 images.append(img_b64)
@@ -111,12 +111,12 @@ class GeminiProvider(BaseVisionProvider):
             parts = [types.Part.from_text(text=EXTRACTION_PROMPT)]
             for img_b64 in images:
                 parts.append(types.Part.from_bytes(
-                    data       = base64.b64decode(img_b64),
+                    data = base64.b64decode(img_b64),
                     mime_type  = "image/png",
                 ))
 
             response = self.client.models.generate_content(
-                model    = active_model,
+                model = active_model,
                 contents = [types.Content(
                     role  = "user",
                     parts = parts,
@@ -129,8 +129,8 @@ class GeminiProvider(BaseVisionProvider):
             extracted = json.loads(raw_text)
             result.update(extracted)
             result["provider_name"] = f"gemini:{active_model}"
-            result["confidence"]    = "high"
-            result["raw_text"]      = raw_text
+            result["confidence"] = "high"
+            result["raw_text"] = raw_text
 
         except json.JSONDecodeError as e:
             result["extraction_warnings"].append(
