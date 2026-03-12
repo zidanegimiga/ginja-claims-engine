@@ -1,14 +1,33 @@
 import io
 import json
 import pandas as pd
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Request, Depends
+from api.auth import validate_api_key, get_client_ip
 from fastapi.responses import JSONResponse
 from api.schemas import ClaimRequest, AdjudicationResponse, BatchClaimRequest
 from engine.adjudicator import adjudicate
 from monitoring.logger import log_adjudication
-from db.mongo import save_adjudication_result
+from db.mongo import save_adjudication_result, get_adjudication_result, list_adjudication_results
 
 router = APIRouter()
+
+def require_write(request: Request) -> dict:
+    """
+    FastAPI dependency for write scope authentication.
+    When used with Depends(), FastAPI runs this before
+    any request body parsing or schema validation.
+    This ensures unauthenticated requests are rejected
+    immediately without processing the payload.
+    """
+    key = request.headers.get("X-API-Key")
+    ip  = get_client_ip(request)
+    return validate_api_key(key, "write", ip)
+
+
+def require_read(request: Request) -> dict:
+    key = request.headers.get("X-API-Key")
+    ip  = get_client_ip(request)
+    return validate_api_key(key, "read", ip)
 
 @router.post(
     "/adjudicate",
@@ -21,7 +40,7 @@ router = APIRouter()
     confidence, and plain-English explanation.
     """
 )
-async def adjudicate_claim(claim: ClaimRequest):
+async def adjudicate_claim(claim: ClaimRequest, request: Request, auth: dict = Depends(require_write)):
     """
     Single claim adjudication endpoint.
     Accepts a JSON payload, runs it through all three
@@ -29,12 +48,10 @@ async def adjudicate_claim(claim: ClaimRequest):
     """
     try:
         raw_claim = claim.model_dump()
-        result = adjudicate(raw_claim)
+        result    = adjudicate(raw_claim)
 
-        # Save to MongoDB asynchronously
         await save_adjudication_result(result)
 
-        # Log for monitoring
         log_adjudication(result)
 
         return AdjudicationResponse(**result)
@@ -48,11 +65,12 @@ async def adjudicate_claim(claim: ClaimRequest):
     summary="Adjudicate multiple claims from JSON",
     description="Submit an array of claims and receive decisions for all of them."
 )
-async def adjudicate_batch(batch: BatchClaimRequest):
+async def adjudicate_batch(batch: BatchClaimRequest, request: Request, auth:    dict = Depends(require_write)):
     """
     Batch adjudication from a JSON array.
     Processes each claim sequentially and returns all results.
     """
+
     results = []
     errors = []
 
@@ -84,12 +102,14 @@ async def adjudicate_batch(batch: BatchClaimRequest):
     summary="Upload a CSV file of claims",
     description="Upload a CSV file. Each row is adjudicated and results returned."
 )
-async def adjudicate_csv(file: UploadFile = File(...)):
+async def adjudicate_csv(file: UploadFile = File(...), request: Request = None, auth: dict = Depends(require_write)):
     """
     CSV file upload endpoint.
     Reads each row as a claim, adjudicates it,
     and returns all results.
     """
+    require_write(request)
+
     if not file.filename.endswith(".csv"):
         raise HTTPException(
             status_code=400,
@@ -137,47 +157,43 @@ async def adjudicate_csv(file: UploadFile = File(...)):
     tags=["Claims"],
     summary="Retrieve a previously adjudicated claim"
 )
-async def get_claim(claim_id: str):
+async def get_claim(
+    claim_id: str,
+    request: Request,
+    auth: dict = Depends(require_read),
+):
     """
     Retrieves the full adjudication record for a claim
     from MongoDB by claim ID.
     """
-    from db.mongo import get_adjudication_result
+
     result = await get_adjudication_result(claim_id)
     if not result:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Claim {claim_id} not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
     return result
 
 
 @router.get(
     "/claims",
-    tags=["Claims"],
-    summary="List adjudicated claims with optional filters"
+    tags    = ["Claims"],
+    summary = "List adjudicated claims with optional filters",
 )
 async def list_claims(
-    decision: str = Query(default=None, description="Filter by decision: Pass, Flag, Fail"),
+    request:  Request,
+    decision: str = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
     skip: int = Query(default=0, ge=0),
+    auth: dict = Depends(require_read),
 ):
     """
     Returns a paginated list of adjudicated claims.
     Optionally filter by decision type.
     """
-    from db.mongo import list_adjudication_results
+
     results = await list_adjudication_results(
-        decision=decision,
-        limit=limit,
-        skip=skip,
+        decision=decision, limit=limit, skip=skip
     )
-    return {
-        "total": len(results),
-        "skip": skip,
-        "limit": limit,
-        "results": results,
-    }
+    return {"total": len(results), "skip": skip, "limit": limit, "results": results}
 
 
 @router.post(
@@ -195,6 +211,8 @@ async def list_claims(
     """
 )
 async def adjudicate_pdf(
+    request:  Request,
+    auth: dict = Depends(require_write),
     file: UploadFile = File(...),
     provider: str = Query(
         default=None,
