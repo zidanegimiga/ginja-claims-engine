@@ -133,4 +133,25 @@ async def adjudicate_csv(file: UploadFile = File(...)):
         "error_details": errors,
     }
 
+@router.get(
+    "/claims/{claim_id}",
+    tags=["Claims"],
+    summary="Retrieve a previously adjudicated claim"
+)
+async def get_claim(claim_id: str):
+    """
+    Retrieves the full adjudication record for a claim
+    from MongoDB by claim ID.
+    """
+    from db.mongo import get_adjudication_result
+    result = await get_adjudication_result(claim_id)
+    if not result:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Claim {claim_id} not found"
+        )
+    return result
+
+
+
 
