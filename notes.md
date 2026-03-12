@@ -154,3 +154,46 @@ Performing basic validation. Basically fast checks that require no machine learn
 
 STAGE 2:
 Detailed validation. Clinical and financial checks. Only reached if Stage 1 passes.
+
+
+# Adjucator Engine snapshot
+`CLM-TEST-001` — Passed cleanly. Risk score 0.0297 (nearly zero), confidence 94%. The model is certain this is legitimate.
+`CLM-TEST-002` — Failed at Stage 2 in 0ms. Never even reached the ML model. The hard rule caught it instantly — 50,000 KES against a 4,000 KES tariff is 12.5x the approved rate. Hard override, immediate Fail. This is exactly how a real adjudication system works — don't waste compute on obvious cases.
+`CLM-TEST-003` — Failed at Stage 3 via ML scoring. Risk score 0.9991. Three clear reasons: amount above tariff, mismatched codes, high-risk provider with suspicious volume. The model caught all three signals simultaneously.
+
+```
+(venv) zedane@Zidanes-MacBook-M4 ginja-claims-engine % python -m scripts.test_adjudicator
+
+=======================================================
+Testing claim: CLM-TEST-001
+Decision     : Pass
+Risk Score   : 0.0297
+Confidence   : 0.9406
+Stage        : 3
+Reasons:
+  • Claim meets all validation criteria
+Processing   : 554ms
+
+=======================================================
+Testing claim: CLM-TEST-002
+Decision     : Fail
+Risk Score   : 1.0
+Confidence   : 1.0
+Stage        : 2
+Reasons:
+  • Claimed amount (50000 KES) exceeds 3.0x the approved tariff (4000 KES)
+Processing   : 0ms
+
+=======================================================
+Testing claim: CLM-TEST-003
+Decision     : Fail
+Risk Score   : 0.9991
+Confidence   : 0.9982
+Stage        : 3
+Reasons:
+  • Claimed amount is 45.0% above the approved tariff
+  • Procedure code does not match the submitted diagnosis code
+  • Provider has an elevated risk profile based on historical claim patterns
+  • Provider has submitted 35 claims — significantly above average
+Processing   : 8ms
+```
