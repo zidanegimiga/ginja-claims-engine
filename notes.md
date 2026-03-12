@@ -99,3 +99,7 @@ amount_deviation_pct is second — how much above tariff is the strongest financ
 code_match is third — mismatched diagnosis and procedure codes are a strong fraud indicator
 is_duplicate scored zero — this is because our duplicate detection in synthetic data wasn't frequent enough to create a learnable pattern.
 
+# Prediction model building
+Deliberately setting the Pass threshold low (0.3) so borderline cases go to human review rather than being auto-approved. 
+In healthcare, false negatives (missed fraud) are more costly than false positives (unnecessary reviews).
+
