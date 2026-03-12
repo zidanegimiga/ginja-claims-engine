@@ -80,3 +80,22 @@ The handwriting varies significantly — "Avenue Hospital" is quite clear, "Bila
 This changes our data model slightly. A claim in our system is not one document — it's a pair: claim form + invoice. Our extractor needs to handle both and reconcile them.
 
 
+# Training Notes
+Needed to install OpenMP for MacOS: `brew install libomp`
+Precision 0.891 — of every 100 claims the model flagged as fraud, 89 actually were fraud. Only 11 were false accusations against legitimate claims.
+Recall 0.950 — of every 100 actual fraud cases, the model caught 95 of them. Only 5 slipped through undetected.
+ROC-AUC 0.978 — on a scale of 0.5 (random guessing) to 1.0 (perfect), the model scores 0.978. Extremely strong.
+
+Confusion matrix:
+
+173 legitimate claims correctly approved
+57 fraud cases correctly caught
+7 legitimate claims wrongly flagged (false positives — minor inconvenience)
+3 fraud cases missed (false negatives — the costly ones)
+
+The SHAP rankings tell a clear story:
+provider_is_high_risk is the strongest signal — who submits the claim matters most
+amount_deviation_pct is second — how much above tariff is the strongest financial signal
+code_match is third — mismatched diagnosis and procedure codes are a strong fraud indicator
+is_duplicate scored zero — this is because our duplicate detection in synthetic data wasn't frequent enough to create a learnable pattern.
+
