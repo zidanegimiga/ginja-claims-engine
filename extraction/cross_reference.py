@@ -290,21 +290,35 @@ def _normalise_name(name: str | None) -> str | None:
 
 def _names_match(a: str, b: str) -> bool:
     """
-    Fuzzy name matching — handles minor spelling differences,
-    initials, and word order variations.
+    Fuzzy name matching that handles word order differences
+    and initials, but catches first name mismatches.
 
-    Examples that should match:
-    - "wanjiku kamau" vs "kamau wanjiku"
-    - "siddharth sharma" vs "s. sharma"
+    Matches:
+    - "sharma siddharth" vs "siddharth sharma"  (word order)
+    - "s sharma" vs "siddharth sharma" (initial)
+
+    Does not match:
+    - "john doe" vs "jane doe" (different first name)
+    - "john doe" vs "john smith" (different last name)
     """
     if a == b:
         return True
 
-    # Check if all words in shorter name appear in longer name
-    words_a = set(a.split())
-    words_b = set(b.split())
-    overlap = words_a & words_b
+    words_a = a.split()
+    words_b = b.split()
+    set_a = set(words_a)
+    set_b = set(words_b)
 
-    # If more than half the words match, consider it a match
-    min_words = min(len(words_a), len(words_b))
-    return len(overlap) >= max(1, min_words - 1)
+    overlap = set_a & set_b
+
+    # Require at least 2 words to match, or all words if
+    # one name has only one word
+    min_length = min(len(words_a), len(words_b))
+
+    if min_length == 1:
+        return len(overlap) == 1
+
+    # Require majority of the shorter name's words to match
+    required = max(2, min_length - 1)
+    return len(overlap) >= required
+
