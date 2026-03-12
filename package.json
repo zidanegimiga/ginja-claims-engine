@@ -1,13 +1,10 @@
 {
   "name": "ginja",
   "private": true,
-  "workspaces": [
-    "apps/web"
-  ],
   "scripts": {
-    "dev:web": "npm run dev --workspace=apps/web",
-    "build:web": "npm run build --workspace=apps/web",
-    "test:web": "npm run test --workspace=apps/web"
+    "dev:web": "cd apps/web && npm run dev",
+    "build:web": "cd apps/web && npm run build",
+    "test:web": "cd apps/web && npm run test"
   },
   "engines": {
     "node": ">=24.0.0"
