@@ -323,9 +323,7 @@ def add_features(
     return claims
 
 
-# ─────────────────────────────────────────────
 # MAIN GENERATOR
-# ─────────────────────────────────────────────
 
 def generate_dataset(
     num_claims: int = 1200,

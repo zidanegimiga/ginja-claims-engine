@@ -2,6 +2,7 @@ venv/
 __pycache__/
 *.pyc
 .env
-model/artifacts/*.json
+model/artifacts
 *.db
 .DS_Store
+*.note
