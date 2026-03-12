@@ -139,4 +139,18 @@ The SHAP values tell a clear story:
 - `is_duplicate` scored zero — this is because our duplicate detection in synthetic data wasn't frequent enough to create a learnable pattern.
 
 
+# Building the Rules Engine
 
+CURATED VALID CODE SETS
+In production these would be loaded from a medical codes database. For the prototype we use curated subsets of real ICD-10 and CPT codes.
+
+Maximum claim age: claims older than this are rejected. 90 days is standard in most insurance markets
+
+Created hard override thresholds 
+If claimed amount exceeds tariff by this much, auto-fail regardless of ML score (3x tariff)
+
+Stage 1:
+Performing basic validation. Basically fast checks that require no machine learning. A failure here stops processing immediately.
+
+STAGE 2:
+Detailed validation. Clinical and financial checks. Only reached if Stage 1 passes.
