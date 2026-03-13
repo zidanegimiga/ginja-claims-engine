@@ -19,6 +19,11 @@ from api.middleware import (
     RateLimitMiddleware,
 )
 from monitoring.logger import get_logger
+from monitoring.metrics import (
+    claims_total, adjudication_duration, risk_score_histogram,
+    http_requests_total, active_requests, generate_latest, CONTENT_TYPE_LATEST,
+)
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -82,6 +87,22 @@ app = FastAPI(
 )
 
 # Middleware
+@app.middleware("http")
+async def metrics_middleware(request, call_next):
+    active_requests.inc()
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+
+    http_requests_total.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status=response.status_code,
+    ).inc()
+
+    active_requests.dec()
+    return response
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
 app.add_middleware(RequestIDMiddleware)
@@ -116,6 +137,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
+@app.get("/metrics", include_in_schema=False)
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(claims.router, prefix="/api/v1")

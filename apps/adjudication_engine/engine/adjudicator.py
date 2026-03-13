@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from features.engineer import engineer_features
 from model.predict import predict_claim
 from engine.rules import run_stage_one, run_stage_two
+from monitoring.metrics import claims_total, adjudication_duration, risk_score_histogram
 
 
 EOB_TEMPLATES = {
@@ -63,6 +64,12 @@ def adjudicate(raw_claim: dict) -> dict:
     })
 
     if not stage_one["passed"]:
+        claims_total.labels(decision="Fail", stage="1", source_type="api").inc()
+        adjudication_duration.labels(decision="Fail").observe(
+            (datetime.now(timezone.utc) - started_at).total_seconds()
+        )
+        risk_score_histogram.observe(1.0)
+        
         return _build_result(
             raw_claim = raw_claim,
             decision = "Fail",
@@ -88,6 +95,12 @@ def adjudicate(raw_claim: dict) -> dict:
     })
 
     if not stage_two["passed"]:
+        claims_total.labels(decision="Fail", stage="2", source_type="api").inc()
+        adjudication_duration.labels(decision="Fail").observe(
+            (datetime.now(timezone.utc) - started_at).total_seconds()
+        )
+        risk_score_histogram.observe(1.0)
+
         return _build_result(
             raw_claim = raw_claim,
             decision = "Fail",
@@ -102,14 +115,14 @@ def adjudicate(raw_claim: dict) -> dict:
 
     if stage_two["hard_overrides"]:
         return _build_result(
-            raw_claim    = raw_claim,
-            decision     = "Fail",
-            risk_score   = 1.0,
-            confidence   = 1.0,
-            reasons      = stage_two["hard_overrides"],
+            raw_claim = raw_claim,
+            decision = "Fail",
+            risk_score = 1.0,
+            confidence = 1.0,
+            reasons = stage_two["hard_overrides"],
             stage_failed = 2,
-            audit_trail  = audit_trail,
-            started_at   = started_at,
+            audit_trail = audit_trail,
+            started_at = started_at,
             feature_contributions = {},
         )
     
@@ -159,6 +172,21 @@ def adjudicate(raw_claim: dict) -> dict:
         "confidence": ml_result["confidence"],
         "decision": final_decision,
     })
+
+    source_type = (
+        raw_claim["source"].get("source_type", "api")
+        if isinstance(raw_claim.get("source"), dict)
+        else "api"
+    )
+    claims_total.labels(
+        decision=final_decision,
+        stage="3",
+        source_type=source_type,
+    ).inc()
+    adjudication_duration.labels(
+        decision=final_decision,
+    ).observe((datetime.now(timezone.utc) - started_at).total_seconds())
+    risk_score_histogram.observe(blended_score)
 
     return _build_result(
         raw_claim = raw_claim,
