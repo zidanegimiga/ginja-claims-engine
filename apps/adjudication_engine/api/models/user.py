@@ -28,6 +28,7 @@ class UserResponse(BaseModel):
     role: UserRole
     is_active:  bool
     created_at: datetime
+    image: Optional[str] = None
 
 
 class TokenPair(BaseModel):
@@ -45,3 +46,4 @@ class OAuthUserData(BaseModel):
     full_name:   Optional[str] = None
     provider: str # "google" | "microsoft"
     provider_id: str
+    image: Optional[str] = None
