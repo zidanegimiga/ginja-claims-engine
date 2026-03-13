@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from typing import AsyncGenerator
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -27,19 +28,23 @@ def get_database():
 async def save_adjudication_result(result: dict) -> None:
     """
     Saves a completed adjudication result to MongoDB.
-    Uses claim_id as the document identifier so
-    re-adjudicating a claim updates the existing record.
+    Merges the full claim payload including patient details,
+    source metadata, and document references.
     """
     try:
         db = get_database()
         collection = db["claims"]
+
+        from datetime import datetime, timezone
+        if "adjudicated_at" not in result:
+            result["adjudicated_at"] = datetime.now(timezone.utc).isoformat()
+
         await collection.update_one(
             {"claim_id": result["claim_id"]},
             {"$set": result},
             upsert=True,
         )
     except Exception as e:
-        # Log but don't crash. Saving to DB should never prevent a claim from being adjudicated
         print(f"MongoDB save error: {e}")
 
 

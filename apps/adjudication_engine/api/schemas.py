@@ -3,6 +3,27 @@ from typing import Optional
 from datetime import datetime
 
 
+
+class PatientDetails(BaseModel):
+    """
+    PII — stored encrypted in production.
+    For this system we store as-is with RBAC as the access control layer.
+    """
+    full_name: Optional[str] = None
+    national_id: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    phone: Optional[str] = None
+    scheme_number: Optional[str] = None  # insurance scheme / policy number
+
+class ClaimSource(BaseModel):
+    """Tracks how the claim entered the system."""
+    source_type: Literal["pdf", "csv", "json", "api", "manual"] = "api"
+    document_key: Optional[str] = None    # Bucket storage object key
+    document_name: Optional[str] = None  # original filename
+    document_url: Optional[str] = None  # presigned URL — generated on demand, not stored
+    uploaded_by: Optional[str] = None  # user ID who uploaded
+    uploaded_at: Optional[datetime] = None
+
 class ClaimRequest(BaseModel):
     """
     The shape of a claim submitted via the API.
@@ -26,6 +47,11 @@ class ClaimRequest(BaseModel):
     is_duplicate: Optional[int] = Field(default=0)
     historical_claim_frequency: Optional[int] = Field(default=1, ge=0)
 
+    patient: Optional[PatientDetails] = None
+    source: Optional[ClaimSource] = None
+    invoice_number: Optional[str] = None
+    notes: Optional[str] = None
+
     @field_validator("date_of_service")
     @classmethod
     def validate_date(cls, value: str) -> str:
@@ -35,12 +61,12 @@ class ClaimRequest(BaseModel):
             raise ValueError(f"Invalid date format: {value}. Use ISO format e.g. 2026-01-15T10:00:00")
         return value
 
-    @field_validator("member_id")
-    @classmethod
-    def validate_member_id(cls, value: str) -> str:
-        if not value.startswith("MEM-"):
-            raise ValueError(f"Member ID must start with MEM-: {value}")
-        return value
+    # @field_validator("member_id")
+    # @classmethod
+    # def validate_member_id(cls, value: str) -> str:
+    #     if not value.startswith("MEM-"):
+    #         raise ValueError(f"Member ID must start with MEM-: {value}")
+    #     return value
 
 
 class AdjudicationResponse(BaseModel):

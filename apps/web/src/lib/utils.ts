@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// ─── Decision helpers ────────────────────────────────────────────────────────
+//  Decision helpers
 export function getDecisionColor(decision: Decision): string {
   return {
     Pass: "text-success",
@@ -38,7 +38,7 @@ export function getRiskBarColor(score: number): string {
 // Formatting
 export function formatCurrency(
   amount: number,
-  currency: string = "KES"
+  currency: string = "KES",
 ): string {
   return new Intl.NumberFormat("en-KE", {
     style: "currency",
@@ -74,7 +74,7 @@ export function formatPercent(value: number, decimals: number = 1): string {
   return `${(value * 100).toFixed(decimals)}%`;
 }
 
-// Truncation 
+// Truncation
 export function truncateId(id: string, chars: number = 8): string {
   if (id.length <= chars) return id;
   return `${id.slice(0, chars)}…`;

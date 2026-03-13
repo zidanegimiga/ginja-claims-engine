@@ -7,6 +7,28 @@ import {
   ClaimRequest,
 } from "@/types";
 
+export async function fetchDocumentUrl(claimId: string): Promise<string> {
+  const { data } = await apiClient.get<{ url: string }>(
+    `/documents/view/${claimId}`,
+  );
+  return data.url;
+}
+
+export async function getPresignedUploadUrl(
+  filename: string,
+  contentType: string,
+): Promise<{
+  upload_url: string;
+  document_key: string;
+  document_name: string;
+}> {
+  const { data } = await apiClient.post("/documents/upload-url", {
+    filename,
+    content_type: contentType,
+  });
+  return data;
+}
+
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const [allRes, passRes, flagRes, failRes] = await Promise.all([
     apiClient.get<ClaimsListResponse>("/claims?limit=1"),
