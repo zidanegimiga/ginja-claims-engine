@@ -71,7 +71,7 @@ function Field({
 }
 
 const inputClass = cn(
-  "w-full h-10 px-3 rounded-lg border border-border bg-card text-sm text-foreground",
+  "w-full h-10 px-3 rounded-lg border border-border bg-card text-sm text-foreground my-4",
   "placeholder:text-muted-foreground/50",
   "focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60",
   "transition-all duration-150",

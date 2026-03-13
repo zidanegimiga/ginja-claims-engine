@@ -37,7 +37,7 @@ export function ShapChart({ contributions }: ShapChartProps) {
           Feature Contributions
         </h2>
         <p className="text-[11px] text-muted-foreground mt-0.5">
-          SHAP values — positive values increase risk, negative values reduce it
+         <b>SHAP values: </b> positive values increase risk, negative values reduce it
         </p>
       </div>
 

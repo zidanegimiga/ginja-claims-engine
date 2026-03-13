@@ -79,13 +79,13 @@ export default function ClaimDetailPage({ params }: Props) {
               </>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <div className="text-sm text-muted-foreground mt-0.5">
             {isLoading ? (
               <Skeleton className="h-4 w-40 mt-1" />
             ) : (
               `Adjudicated ${formatDateTime(claim?.adjudicated_at)}`
             )}
-          </p>
+          </div>
         </div>
       </div>
 
