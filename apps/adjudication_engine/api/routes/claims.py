@@ -12,6 +12,8 @@ from fastapi import WebSocket, WebSocketDisconnect, Query as WsQuery
 import asyncio
 import uuid
 from api.services.extraction_service import extract_claim_from_pdf
+from pydantic import BaseModel
+from api.middleware import verify_api_key
 
 
 router = APIRouter()
