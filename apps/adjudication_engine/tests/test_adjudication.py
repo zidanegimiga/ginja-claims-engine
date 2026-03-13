@@ -183,3 +183,37 @@ async def test_claim_retrievable_after_adjudication(client: AsyncClient, api_hea
     assert data["claim_id"] == claim_id
     assert data["member_id"] == VALID_CLAIM["member_id"]
     assert data["claimed_amount"] == VALID_CLAIM["claimed_amount"]
+
+
+@pytest.mark.anyio(scope="module")
+async def test_claims_list_returns_results(client: AsyncClient, api_headers: dict):
+    res = await client.get(
+        "/api/v1/claims?limit=5",
+        headers=api_headers,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "results" in data
+    assert "total"   in data
+    assert isinstance(data["results"], list)
+    assert len(data["results"]) <= 5
+
+
+@pytest.mark.anyio(scope="module")
+async def test_claims_list_filter_by_decision(client: AsyncClient, api_headers: dict):
+    res = await client.get(
+        "/api/v1/claims?limit=20&decision=Pass",
+        headers=api_headers,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    for claim in data["results"]:
+        assert claim["decision"] == "Pass"
+
+
+@pytest.mark.anyio(scope="module")
+async def test_claims_list_no_api_key_rejected(client: AsyncClient):
+    res = await client.get("/api/v1/claims?limit=5")
+    assert res.status_code == 401
+
+
