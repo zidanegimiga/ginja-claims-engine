@@ -108,8 +108,6 @@ export function formatPercent(value: number, decimals: number = 1): string {
 
 // Truncation
 export function truncateId(id: string, chars: number = 8): string {
-  console.log("id", id);
-
   if (!id) return "not_present";
 
   if (id.length <= chars) return id;
