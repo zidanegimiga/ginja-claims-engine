@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS base
 
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
@@ -11,17 +11,23 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY requirements.txt .
-
-# Install packages but skip the NVIDIA GPU libraries
-# xgboost pulls nvidia-nccl-cu12 as an optional dep
-# which is 293MB and useless on CPU-only deployments
+# Dependencies
+FROM base AS deps
+COPY apps/adjudication_engine/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-    --extra-index-url https://pypi.org/simple \
     && pip uninstall -y nvidia-nccl-cu12 2>/dev/null || true
 
-COPY . .
+# Runtime
+FROM deps AS runner
+COPY apps/adjudication_engine .
+
+ENV PYTHONPATH="/app"
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+CMD ["python", "-m", "uvicorn", "api.main:app", \
+     "--host", "0.0.0.0", "--port", "8000", \
+     "--workers", "2"]
