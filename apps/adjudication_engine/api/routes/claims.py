@@ -8,8 +8,96 @@ from api.schemas import ClaimRequest, AdjudicationResponse, BatchClaimRequest
 from engine.adjudicator import adjudicate
 from monitoring.logger import log_adjudication
 from db.mongo import save_adjudication_result, get_adjudication_result, list_adjudication_results
+from fastapi import WebSocket, WebSocketDisconnect, Query as WsQuery
+import asyncio
+import uuid
+from api.services.extraction_service import extract_claim_from_pdf
+
 
 router = APIRouter()
+
+
+class ExtractRequest(BaseModel):
+    document_key: str
+
+
+@router.post("/extract")
+async def extract_claim(
+    body: ExtractRequest,
+    api_key: str = Depends(verify_api_key),
+):
+    """Download PDF from R2 and extract structured claim data."""
+    import boto3
+    from botocore.exceptions import ClientError
+    from core.config import settings
+
+    # Download from R2
+    try:
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=f"https://{settings.r2_account_id}.r2.cloudflarestorage.com",
+            aws_access_key_id=settings.r2_access_key_id,
+            aws_secret_access_key=settings.r2_secret_access_key,
+            region_name="auto",
+        )
+        obj = s3.get_object(Bucket=settings.r2_bucket_name, Key=body.document_key)
+        pdf_bytes = obj["Body"].read()
+    except ClientError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Document not found: {body.document_key}"
+        )
+
+    # Extract
+    result = extract_claim_from_pdf(pdf_bytes)
+    return result
+
+
+router.websocket("/ws/adjudicate")
+async def ws_adjudicate(
+    websocket: WebSocket,
+    api_key: str = WsQuery(default=None),
+):
+    # Validate API key before accepting
+    from api.auth_keys import validate_api_key
+    try:
+        validate_api_key(api_key, "write", websocket.client.host)
+    except Exception:
+        await websocket.close(code=4001)
+        return
+
+    await websocket.accept()
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            job_id = data.get("job_id", str(uuid.uuid4()))
+
+            # Acknowledge receipt
+            await websocket.send_json({"job_id": job_id, "status": "processing"})
+
+            try:
+                # Run adjudication in thread pool — keeps the event loop free
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, adjudicate, data
+                )
+                await save_adjudication_result(result)
+                log_adjudication(result)
+
+                await websocket.send_json({
+                    "job_id": job_id,
+                    "status": "done",
+                    "result": result,
+                })
+            except Exception as e:
+                await websocket.send_json({
+                    "job_id": job_id,
+                    "status": "error",
+                    "error":  str(e),
+                })
+
+    except WebSocketDisconnect:
+        pass
 
 def require_write(request: Request) -> dict:
     """
