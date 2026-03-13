@@ -2,7 +2,7 @@ import io
 import json
 import pandas as pd
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Request, Depends
-from api.auth import validate_api_key, get_client_ip
+from api.auth_keys import validate_api_key, get_client_ip
 from fastapi.responses import JSONResponse
 from api.schemas import ClaimRequest, AdjudicationResponse, BatchClaimRequest
 from engine.adjudicator import adjudicate

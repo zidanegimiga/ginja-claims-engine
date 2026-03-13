@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from api.auth import (
+from api.auth_keys import (
     generate_api_key,
     revoke_api_key,
     list_api_keys,

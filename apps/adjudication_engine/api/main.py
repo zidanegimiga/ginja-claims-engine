@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from api.routes import claims, health
+from api.routes.auth import router as auth_router
 from api.middleware import (
     RequestIDMiddleware,
     SecurityHeadersMiddleware,
@@ -117,6 +118,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(claims.router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["System"], include_in_schema=False)
