@@ -40,7 +40,7 @@ class ClaimRequest(BaseModel):
     wrong types or missing required fields return
     a clear error before any processing happens.
     """
-    claim_id: str = Field(..., example="CLM-2024-001")
+    claim_id: Optional[str] = Field(default=None, example="CLM-2024-001")
     member_id: str = Field(..., example="MEM-00001")
     provider_id: str = Field(..., example="PRV-00001")
     diagnosis_code: str = Field(..., example="B50.9")

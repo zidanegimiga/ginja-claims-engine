@@ -1,0 +1,76 @@
+import pytest
+import os
+from httpx import AsyncClient, ASGITransport
+from api.main import app
+
+
+VALID_CLAIM = {
+    "member_id":       "M-TEST-001",
+    "provider_id":     "P-TEST-001",
+    "diagnosis_code":  "A09",
+    "procedure_code":  "99213",
+    "claimed_amount":  5000.0,
+    "approved_tariff": 4500.0,
+    "date_of_service": "2026-03-01",
+    "provider_type":   "clinic",
+    "location":        "Nairobi",
+    "member_age":      35,
+}
+
+
+@pytest.fixture(scope="module")
+def anyio_backend():
+    return "asyncio"
+
+
+@pytest.fixture(scope="module")
+async def client():
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as c:
+        yield c
+
+
+@pytest.fixture(scope="module")
+def api_headers():
+    key = os.environ.get("API_KEY_PRIMARY", "")
+    if not key:
+        pytest.skip("API_KEY_PRIMARY not set — skipping adjudication tests")
+    return {"X-API-Key": key}
+
+
+# ── Batch 1 — Basic adjudication ─────────────────────────────────────────────
+
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_valid_claim(client: AsyncClient, api_headers: dict):
+    res = await client.post(
+        "/api/v1/adjudicate",
+        json=VALID_CLAIM,
+        headers=api_headers,
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["decision"] in ("Pass", "Flag", "Fail")
+    assert 0 <= data["risk_score"] <= 1
+    assert "claim_id"               in data
+    assert "feature_contributions"  in data
+    assert "explanation_of_benefits" in data
+
+
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_no_api_key_rejected(client: AsyncClient):
+    res = await client.post("/api/v1/adjudicate", json=VALID_CLAIM)
+    assert res.status_code == 401
+
+
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_missing_required_field(client: AsyncClient, api_headers: dict):
+    claim = {k: v for k, v in VALID_CLAIM.items() if k != "member_id"}
+    res   = await client.post(
+        "/api/v1/adjudicate",
+        json=claim,
+        headers=api_headers,
+    )
+    assert res.status_code == 422
+
