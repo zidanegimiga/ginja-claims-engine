@@ -5,8 +5,8 @@ import { ClaimRequest } from "@/types";
 export function useClaim(claimId: string) {
   return useQuery({
     queryKey: ["claims", claimId],
-    queryFn:  () => fetchClaim(claimId),
-    enabled:  Boolean(claimId),
+    queryFn: () => fetchClaim(claimId),
+    enabled: Boolean(claimId),
   });
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type Decision = "Pass" | "Flag" | "Fail";
 
 export type ProviderType =
@@ -41,6 +42,7 @@ export interface ClaimRequest {
   location: string;
   member_age?: number;
   is_duplicate?: boolean;
+  source: ClaimSource;
 }
 
 export interface FeatureContributions {
@@ -54,10 +56,29 @@ export interface FeatureContributions {
   is_duplicate: number;
 }
 
+// export interface AdjudicationResult {
+//   claim_id: string;
+//   member_id: string;
+//   provider_id: string;
+//   decision: Decision;
+//   risk_score: number;
+//   confidence: number;
+//   reasons: string[];
+//   explanation_of_benefits: string;
+//   feature_contributions: FeatureContributions;
+//   adjudication_stage: 1 | 2 | 3;
+//   processing_time_ms: number;
+//   adjudicated_at: string;
+//   extraction_metadata?: {
+//     provider: string;
+//     confidence: number;
+//     warnings: string[];
+//   };
+// }
+
 export interface AdjudicationResult {
+  // ── Adjudication outputs ─────────────────────────────────────────
   claim_id: string;
-  member_id: string;
-  provider_id: string;
   decision: Decision;
   risk_score: number;
   confidence: number;
@@ -67,6 +88,31 @@ export interface AdjudicationResult {
   adjudication_stage: 1 | 2 | 3;
   processing_time_ms: number;
   adjudicated_at: string;
+  audit_trail?: any[];
+
+  member_id: string;
+  provider_id: string;
+  diagnosis_code: string;
+  procedure_code: string;
+  claimed_amount: number;
+  approved_tariff: number;
+  date_of_service: string;
+  provider_type: ProviderType;
+  location: string;
+  member_age?: number;
+  is_duplicate?: boolean;
+  invoice_number?: string;
+  notes?: string;
+
+  patient?: {
+    full_name?: string;
+    national_id?: string;
+    date_of_birth?: string;
+    phone?: string;
+    scheme_number?: string;
+  };
+  source?: ClaimSource;
+
   extraction_metadata?: {
     provider: string;
     confidence: number;
