@@ -90,7 +90,9 @@ async def refresh(body: RefreshRequest, db=Depends(get_db)):
     if not user or not user["is_active"]:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
 
-    # Issue new pair and rotate stored token
+    # Delete old token BEFORE issuing new pair
+    await revoke_refresh_token(db, user_id, body.refresh_token)
+
     tokens = create_token_pair(user["_id"], user["role"])
     await store_refresh_token(db, user["_id"], tokens.refresh_token)
     return tokens
@@ -99,10 +101,11 @@ async def refresh(body: RefreshRequest, db=Depends(get_db)):
 
 @router.post("/logout", status_code=204)
 async def logout(
+    body: RefreshRequest,
     current_user=Depends(get_current_user),
     db=Depends(get_db),
 ):
-    await revoke_refresh_token(db, current_user["_id"])
+    await revoke_refresh_token(db, current_user["_id"], body.refresh_token)
 
 
 @router.get("/me", response_model=UserResponse)

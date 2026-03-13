@@ -72,6 +72,7 @@ PyMuPDF==1.27.2
 pyparsing==3.3.2
 pytesseract==0.3.13
 pytest==9.0.2
+pytest-anyio==0.0.0
 pytest-asyncio==1.3.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2

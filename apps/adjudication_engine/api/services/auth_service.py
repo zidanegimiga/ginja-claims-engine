@@ -17,7 +17,6 @@ REFRESH_TOKEN_EXPIRY = 7 * 24 * 60  # 7 days in minutes
 
 
 # Password hashing
-
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
 
@@ -40,7 +39,12 @@ def create_access_token(user_id: str, role: str) -> str:
 def create_refresh_token(user_id: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRY)
     return jwt.encode(
-        {"sub": user_id, "type": "refresh", "exp": expire},
+        {
+            "sub":  user_id,
+            "type": "refresh",
+            "exp":  expire,
+            "jti":  str(uuid.uuid4()),   # unique ID — prevents identical tokens
+        },
         SECRET_KEY,
         algorithm=ALGORITHM,
     )
@@ -153,31 +157,36 @@ async def get_or_create_oauth_user(
 async def store_refresh_token(
     db: AsyncIOMotorDatabase, user_id: str, token: str
 ) -> None:
-    """Store hashed refresh token — allows server-side invalidation."""
+    """Store hashed refresh token as its own record — one row per token."""
     import hashlib
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    await db.refresh_tokens.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "user_id": user_id,
-            "token_hash": token_hash,
-            "created_at": datetime.now(timezone.utc),
-        }},
-        upsert=True,
-    )
+    await db.refresh_tokens.insert_one({
+        "user_id": user_id,
+        "token_hash": token_hash,
+        "created_at": datetime.now(timezone.utc),
+    })
 
 
 async def validate_refresh_token(
     db: AsyncIOMotorDatabase, user_id: str, token: str
 ) -> bool:
-    """Check the refresh token hash matches what we stored."""
+    """Return True only if this exact token hash exists in the store."""
     import hashlib
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     record = await db.refresh_tokens.find_one({
-        "user_id": user_id, "token_hash": token_hash
+        "user_id": user_id,
+        "token_hash": token_hash,
     })
     return record is not None
 
 
-async def revoke_refresh_token(db: AsyncIOMotorDatabase, user_id: str) -> None:
-    await db.refresh_tokens.delete_one({"user_id": user_id})
+async def revoke_refresh_token(
+    db: AsyncIOMotorDatabase, user_id: str, token: str
+) -> None:
+    """Delete this specific token — not all tokens for the user."""
+    import hashlib
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    await db.refresh_tokens.delete_one({
+        "user_id": user_id,
+        "token_hash": token_hash,
+    })
