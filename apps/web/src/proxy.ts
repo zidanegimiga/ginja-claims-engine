@@ -16,6 +16,12 @@ export default auth((req) => {
     return NextResponse.redirect(url);
   }
 
+  if (req.auth?.error === "RefreshTokenExpired") {
+    const url = new URL("/login", req.url);
+    url.searchParams.set("error", "session_expired");
+    return NextResponse.redirect(url);
+  }
+
   const res = NextResponse.next();
 
   res.headers.set("X-Frame-Options", "DENY");
