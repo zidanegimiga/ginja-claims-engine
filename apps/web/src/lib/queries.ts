@@ -7,23 +7,26 @@ import {
   ClaimRequest,
 } from "@/types";
 
-
-// Dashboard 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
-  const [listRes, allRes] = await Promise.all([
-    apiClient.get<ClaimsListResponse>("/claims?limit=1000"),
-    apiClient.get<ClaimsListResponse>("/claims?limit=1000"),
+  const [allRes, passRes, flagRes, failRes] = await Promise.all([
+    apiClient.get<ClaimsListResponse>("/claims?limit=1"),
+    apiClient.get<ClaimsListResponse>("/claims?limit=1&decision=Pass"),
+    apiClient.get<ClaimsListResponse>("/claims?limit=1&decision=Flag"),
+    apiClient.get<ClaimsListResponse>("/claims?limit=1&decision=Fail"),
   ]);
 
-  const claims = listRes.data.results;
-  const total  = listRes.data.total;
+  const total = allRes.data.total;
+  const passed = passRes.data.total;
+  const flagged = flagRes.data.total;
+  const failed = failRes.data.total;
 
-  const passed  = claims.filter(c => c.decision === "Pass").length;
-  const flagged = claims.filter(c => c.decision === "Flag").length;
-  const failed  = claims.filter(c => c.decision === "Fail").length;
+  // Fetch a sample of recent claims to compute avg risk score
+  const sampleRes =
+    await apiClient.get<ClaimsListResponse>("/claims?limit=100");
+  const sample = sampleRes.data.results;
 
-  const avgRisk = claims.length
-    ? claims.reduce((sum, c) => sum + c.risk_score, 0) / claims.length
+  const avgRisk = sample.length
+    ? sample.reduce((sum, c) => sum + c.risk_score, 0) / sample.length
     : 0;
 
   return {
@@ -38,11 +41,11 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 }
 
 export async function fetchRecentClaims(
-  params: PaginationParams = {}
+  params: PaginationParams = {},
 ): Promise<ClaimsListResponse> {
   const { skip = 0, limit = 10, decision } = params;
   const query = new URLSearchParams({
-    skip:  String(skip),
+    skip: String(skip),
     limit: String(limit),
     ...(decision ? { decision } : {}),
   });
@@ -51,13 +54,18 @@ export async function fetchRecentClaims(
 }
 
 export async function fetchClaim(claimId: string): Promise<AdjudicationResult> {
-  const { data } = await apiClient.get<AdjudicationResult>(`/claims/${claimId}`);
+  const { data } = await apiClient.get<AdjudicationResult>(
+    `/claims/${claimId}`,
+  );
   return data;
 }
 
 export async function adjudicateClaim(
-  claim: ClaimRequest
+  claim: ClaimRequest,
 ): Promise<AdjudicationResult> {
-  const { data } = await apiClient.post<AdjudicationResult>("/adjudicate", claim);
+  const { data } = await apiClient.post<AdjudicationResult>(
+    "/adjudicate",
+    claim,
+  );
   return data;
 }

@@ -8,7 +8,11 @@ import {
   Activity,
   TrendingUp,
 } from "lucide-react";
-import { useDashboardStats, useRecentClaims } from "@/hooks/useDashboard";
+import {
+  useClaimsSample,
+  useDashboardStats,
+  useRecentClaims,
+} from "@/hooks/useDashboard";
 import { StatCard } from "@/features/dashboard/components/StatCard";
 import { StatCardSkeleton } from "@/components/ui/Skeleton";
 import { DecisionChart } from "@/features/dashboard/components/DecisionChart";
@@ -18,9 +22,10 @@ import { ClaimsTable } from "@/features/claims/components/ClaimsTable";
 
 export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: claims, isLoading: claimsLoading } = useRecentClaims({
+  const { data: recent, isLoading: recentLoading } = useRecentClaims({
     limit: 8,
   });
+  const { data: sample, isLoading: sampleLoading } = useClaimsSample();
 
   return (
     <div className="space-y-6">
@@ -105,10 +110,10 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <DecisionChart stats={stats} loading={statsLoading} />
-        <RiskHistogram claims={claims?.results} loading={claimsLoading} />
+        <RiskHistogram claims={sample?.results} loading={sampleLoading} />
       </div>
 
-      <ClaimsTable claims={claims?.results ?? []} loading={claimsLoading} />
+      <ClaimsTable claims={recent?.results ?? []} loading={recentLoading} />
     </div>
   );
 }

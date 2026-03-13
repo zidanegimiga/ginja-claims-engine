@@ -181,7 +181,7 @@ async def get_claim(
 async def list_claims(
     request:  Request,
     decision: str = Query(default=None),
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=1000),
     skip: int = Query(default=0, ge=0),
     auth: dict = Depends(require_read),
 ):

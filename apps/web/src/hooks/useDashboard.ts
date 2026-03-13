@@ -17,3 +17,11 @@ export function useRecentClaims(params: PaginationParams = {}) {
     refetchInterval: 30_000,
   });
 }
+
+export function useClaimsSample() {
+  return useQuery({
+    queryKey: ["claims", "sample"],
+    queryFn:  () => fetchRecentClaims({ limit: 100 }),
+    refetchInterval: 60_000,
+  });
+}
