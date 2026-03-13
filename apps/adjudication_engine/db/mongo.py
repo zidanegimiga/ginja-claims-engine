@@ -1,6 +1,7 @@
 import os
-from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
+from typing import AsyncGenerator
+from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
 
 load_dotenv()
 
@@ -80,3 +81,13 @@ async def list_adjudication_results(
     except Exception as e:
         print(f"MongoDB list error: {e}")
         return []
+
+
+async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
+    """
+    FastAPI dependency that yields the database instance.
+    Wraps the existing get_database() singleton so all new
+    routes can use Depends(get_db) without touching the
+    existing save/list/get functions.
+    """
+    yield get_database()

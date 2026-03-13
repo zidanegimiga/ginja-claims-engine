@@ -1,9 +1,9 @@
-xgboost==3.2.0 --extra-index-url https://pypi.org/simple
 altair==6.0.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.1
 attrs==25.4.0
+bcrypt==5.0.0
 blinker==1.9.0
 cachetools==7.0.5
 certifi==2026.2.25
@@ -15,6 +15,7 @@ cryptography==46.0.5
 distro==1.9.0
 dnspython==2.8.0
 ecdsa==0.19.1
+email-validator==2.3.0
 Faker==40.8.0
 fastapi==0.135.1
 gitdb==4.0.12
