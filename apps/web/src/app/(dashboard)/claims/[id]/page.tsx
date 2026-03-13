@@ -233,6 +233,133 @@ export default function ClaimDetailPage({ params }: Props) {
         </div>
       )}
 
+      {!isLoading && claim && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3">
+            Financials
+          </h2>
+          <div className="space-y-0">
+            {[
+              {
+                label: "Claimed Amount",
+                value: formatCurrency(claim.claimed_amount),
+              },
+              {
+                label: "Approved Tariff",
+                value: formatCurrency(claim.approved_tariff),
+              },
+              {
+                label: "Variance",
+                value: (
+                  <span
+                    className={
+                      claim.claimed_amount > claim.approved_tariff
+                        ? "text-red-500"
+                        : "text-emerald-500"
+                    }
+                  >
+                    {claim.claimed_amount > claim.approved_tariff ? "+" : ""}
+                    {formatCurrency(
+                      claim.claimed_amount - claim.approved_tariff,
+                    )}
+                  </span>
+                ),
+              },
+              {
+                label: "Deviation",
+                value: (
+                  <span
+                    className={
+                      Math.abs(claim.claimed_amount - claim.approved_tariff) /
+                        claim.approved_tariff >
+                      0.1
+                        ? "text-red-500"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {(
+                      ((claim.claimed_amount - claim.approved_tariff) /
+                        claim.approved_tariff) *
+                      100
+                    ).toFixed(1)}
+                    %
+                  </span>
+                ),
+              },
+            ].map(({ label, value }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between py-2.5 border-b border-border last:border-0"
+              >
+                <span className="text-xs text-muted-foreground">{label}</span>
+                <span className="text-xs font-mono tabular-nums text-foreground">
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!isLoading && claim?.patient && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3">
+            Patient
+          </h2>
+          <div className="space-y-0">
+            {[
+              { label: "Full Name", value: claim.patient.full_name },
+              { label: "National ID", value: claim.patient.national_id },
+              { label: "Date of Birth", value: claim.patient.date_of_birth },
+              { label: "Phone", value: claim.patient.phone },
+              { label: "Scheme Number", value: claim.patient.scheme_number },
+              {
+                label: "Age",
+                value: claim.member_age
+                  ? `${claim.member_age} years`
+                  : undefined,
+              },
+            ]
+              .filter((row) => row.value)
+              .map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between py-2.5 border-b border-border last:border-0"
+                >
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                  <span className="text-xs font-mono tabular-nums text-foreground">
+                    {value}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {!isLoading && claim?.audit_trail && claim.audit_trail.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-3">
+            Audit Trail
+          </h2>
+          <div className="space-y-3">
+            {claim.audit_trail.map((entry, i: number) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">
+                    {entry.action}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {entry.timestamp ? formatDateTime(entry.timestamp) : ""}
+                    {entry.actor ? ` · ${entry.actor}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!isLoading && claim?.feature_contributions && (
         <ShapChart contributions={claim.feature_contributions} />
       )}
