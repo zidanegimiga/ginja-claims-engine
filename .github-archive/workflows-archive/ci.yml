@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  # ── Backend ────────────────────────────────────────────────────────
+  #  Backend 
   test-api:
     name: Test FastAPI
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short
 
-  # ── Frontend ───────────────────────────────────────────────────────
+  # Frontend
   test-web:
     name: Test Next.js
     runs-on: ubuntu-latest
@@ -71,11 +71,11 @@ jobs:
       - name: Unit tests
         run: npm run test:ci
         env:
-          NEXTAUTH_SECRET:      test-secret-do-not-use-in-prod
+          NEXTAUTH_SECRET:
           NEXTAUTH_URL:         http://localhost:3000
           NEXT_PUBLIC_API_URL:  http://localhost:8000/api/v1
 
-  # ── Docker build check ─────────────────────────────────────────────
+  # ── Docker build check 
   build-images:
     name: Build Docker images
     runs-on: ubuntu-latest
