@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+
+  # ── Backend ────────────────────────────────────────────────────────
+  test-api:
+    name: Test FastAPI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/adjudication_engine
+
+    env:
+      MONGODB_URI:       ${{ secrets.MONGODB_URI }}
+      MONGODB_DB_NAME:   ginja_claims_test
+      JWT_SECRET_KEY:    ${{ secrets.JWT_SECRET_KEY }}
+      API_KEY_PRIMARY:   ${{ secrets.API_KEY_PRIMARY }}
+      GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
+      R2_ACCOUNT_ID:     ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID:  ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME:    ginja-claims-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apps/adjudication_engine/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
+  # ── Frontend ───────────────────────────────────────────────────────
+  test-web:
+    name: Test Next.js
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:ci
+        env:
+          NEXTAUTH_SECRET:      test-secret-do-not-use-in-prod
+          NEXTAUTH_URL:         http://localhost:3000
+          NEXT_PUBLIC_API_URL:  http://localhost:8000/api/v1
+
+  # ── Docker build check ─────────────────────────────────────────────
+  build-images:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    needs: [test-api, test-web]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file:    infra/docker/api.Dockerfile
+          push:    false
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+          tags: ginja-api:${{ github.sha }}
+
+      - name: Build web image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file:    infra/docker/web.Dockerfile
+          push:    false
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+          tags: ginja-web:${{ github.sha }}
