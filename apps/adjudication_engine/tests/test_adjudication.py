@@ -120,4 +120,66 @@ async def test_adjudicate_high_amount_flagged(client: AsyncClient, api_headers: 
     data = res.json()
     assert data["decision"] in ("Flag", "Fail")
 
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_with_patient_details(client: AsyncClient, api_headers: dict):
+    claim = {
+        **VALID_CLAIM,
+        "patient": {
+            "full_name":     "Jane Doe",
+            "national_id":   "123456789",
+            "date_of_birth": "1990-01-15",
+        },
+        "source": {
+            "source_type": "manual",
+        },
+    }
+    res = await client.post(
+        "/api/v1/adjudicate",
+        json=claim,
+        headers=api_headers,
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["patient"]["full_name"]  == "Jane Doe"
+    assert data["patient"]["national_id"] == "123456789"
 
+
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_with_invoice_number(client: AsyncClient, api_headers: dict):
+    claim = {
+        **VALID_CLAIM,
+        "invoice_number": "INV-2026-001",
+        "source": {
+            "source_type": "manual",
+        },
+    }
+    res = await client.post(
+        "/api/v1/adjudicate",
+        json=claim,
+        headers=api_headers,
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["invoice_number"]        == "INV-2026-001"
+    assert data["source"]["source_type"] == "manual"
+
+
+@pytest.mark.anyio(scope="module")
+async def test_claim_retrievable_after_adjudication(client: AsyncClient, api_headers: dict):
+    res = await client.post(
+        "/api/v1/adjudicate",
+        json=VALID_CLAIM,
+        headers=api_headers,
+    )
+    assert res.status_code == 200, res.text
+    claim_id = res.json()["claim_id"]
+
+    get_res = await client.get(
+        f"/api/v1/claims/{claim_id}",
+        headers=api_headers,
+    )
+    assert get_res.status_code == 200
+    data = get_res.json()
+    assert data["claim_id"] == claim_id
+    assert data["member_id"] == VALID_CLAIM["member_id"]
+    assert data["claimed_amount"] == VALID_CLAIM["claimed_amount"]
