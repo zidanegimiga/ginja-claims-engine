@@ -35,6 +35,7 @@ async def save_adjudication_result(result: dict) -> None:
         db = get_database()
         collection = db["claims"]
 
+        # Add server-side timestamps if not present
         from datetime import datetime, timezone
         if "adjudicated_at" not in result:
             result["adjudicated_at"] = datetime.now(timezone.utc).isoformat()

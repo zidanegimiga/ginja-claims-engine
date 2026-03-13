@@ -144,7 +144,6 @@ export default function AuthPage() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0A0A0A]">
       <div className="relative flex flex-col justify-center w-full max-w-[480px] px-12 shrink-0 bg-[#0A0A0A] overflow-hidden">
-        {/* Grid */}
         <div
           className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
@@ -169,7 +168,6 @@ export default function AuthPage() {
           </span>
         </div>
 
-        {/* Animated form area */}
         <div
           className="relative"
           style={{ minHeight: mode === "signup" ? 520 : 420 }}
@@ -186,7 +184,6 @@ export default function AuthPage() {
                 exit="exit"
                 className="absolute inset-0 flex flex-col justify-center space-y-6"
               >
-                {/* Heading */}
                 <div>
                   <h1 className="text-[28px] font-semibold text-white tracking-tight leading-tight">
                     Welcome back
@@ -196,7 +193,6 @@ export default function AuthPage() {
                   </p>
                 </div>
 
-                {/* OAuth */}
                 <div className="space-y-2.5">
                   <OAuthButton
                     provider="google"
@@ -212,7 +208,6 @@ export default function AuthPage() {
 
                 <AuthDivider />
 
-                {/* Credentials form */}
                 <form
                   onSubmit={loginForm.handleSubmit(onLogin)}
                   className="space-y-4"
@@ -285,7 +280,6 @@ export default function AuthPage() {
                   </button>
                 </form>
 
-                {/* Switch */}
                 <p className="text-[12px] text-white/30 text-center">
                   Don&apos;t have an account?{" "}
                   <button
@@ -307,7 +301,6 @@ export default function AuthPage() {
                 exit="exit"
                 className="absolute inset-0 flex flex-col justify-center space-y-5"
               >
-                {/* Heading */}
                 <div>
                   <h1 className="text-[28px] font-semibold text-white tracking-tight leading-tight">
                     Create account
@@ -317,7 +310,6 @@ export default function AuthPage() {
                   </p>
                 </div>
 
-                {/* OAuth */}
                 <div className="space-y-2.5">
                   <OAuthButton
                     provider="google"
@@ -333,7 +325,6 @@ export default function AuthPage() {
 
                 <AuthDivider />
 
-                {/* Signup form */}
                 <form
                   onSubmit={signupForm.handleSubmit(onSignup)}
                   className="space-y-3.5"

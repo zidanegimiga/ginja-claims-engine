@@ -55,20 +55,20 @@ def adjudicate(raw_claim: dict) -> dict:
     # ----- STAGE 1
     stage_one = run_stage_one(raw_claim)
     audit_trail.append({
-        "stage":      1,
-        "timestamp":  datetime.now(timezone.utc).isoformat(),
-        "passed":     stage_one["passed"],
+        "stage": 1,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "passed": stage_one["passed"],
         "checks_run": stage_one["checks_run"],
-        "failures":   stage_one["failures"],
+        "failures": stage_one["failures"],
     })
 
     if not stage_one["passed"]:
         return _build_result(
-            raw_claim   = raw_claim,
-            decision    = "Fail",
-            risk_score  = 1.0,
-            confidence  = 1.0,
-            reasons     = stage_one["failures"],
+            raw_claim = raw_claim,
+            decision = "Fail",
+            risk_score = 1.0,
+            confidence = 1.0,
+            reasons = stage_one["failures"],
             stage_failed = 1,
             audit_trail = audit_trail,
             started_at  = started_at,
@@ -78,25 +78,25 @@ def adjudicate(raw_claim: dict) -> dict:
     # ------ STAGE 2
     stage_two = run_stage_two(raw_claim)
     audit_trail.append({
-        "stage":          2,
-        "timestamp":      datetime.now(timezone.utc).isoformat(),
-        "passed":         stage_two["passed"],
-        "checks_run":     stage_two["checks_run"],
-        "failures":       stage_two["failures"],
+        "stage": 2,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "passed": stage_two["passed"],
+        "checks_run": stage_two["checks_run"],
+        "failures": stage_two["failures"],
         "hard_overrides": stage_two["hard_overrides"],
-        "soft_flags":     stage_two.get("soft_flags", []),
+        "soft_flags": stage_two.get("soft_flags", []),
     })
 
     if not stage_two["passed"]:
         return _build_result(
-            raw_claim    = raw_claim,
-            decision     = "Fail",
-            risk_score   = 1.0,
-            confidence   = 1.0,
-            reasons      = stage_two["failures"],
+            raw_claim = raw_claim,
+            decision = "Fail",
+            risk_score = 1.0,
+            confidence = 1.0,
+            reasons = stage_two["failures"],
             stage_failed = 2,
-            audit_trail  = audit_trail,
-            started_at   = started_at,
+            audit_trail = audit_trail,
+            started_at = started_at,
             feature_contributions = {},
         )
 
@@ -200,9 +200,7 @@ def _build_result(
         eob += f" Specific issues identified: {'; '.join(reasons)}."
 
     return {
-        "claim_id": raw_claim.get("claim_id"),
-        "member_id": raw_claim.get("member_id"),
-        "provider_id": raw_claim.get("provider_id"),
+        **raw_claim,
         "decision": decision,
         "risk_score": risk_score,
         "confidence": confidence,

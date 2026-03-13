@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
 
 from api.routes.auth import get_current_user
 from api.services.storage_service import (
@@ -69,9 +69,9 @@ async def get_upload_url(
 
 @router.get("/view/{claim_id}", response_model=DocumentUrlResponse)
 async def get_document_url(
-    claim_id:       str,
+    claim_id: str,
     document_index: int = Query(default=0, ge=0, le=1),
-    current_user:   dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
     """

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 
@@ -26,11 +26,11 @@ class ClaimSource(BaseModel):
     - cross_reference_score: agreement score between the two docs (0–1)
     """
     source_type: Literal["pdf", "csv", "json", "api", "manual"] = "api"
-    documents:   list[DocumentReference] = Field(default_factory=list, max_length=2)
-    cross_reference_score:    Optional[float] = None
-    cross_reference_warnings: Optional[list[str]] = None
-    uploaded_by:  Optional[str]     = None
-    uploaded_at:  Optional[datetime] = None
+    document_key: Optional[str] = None    # Cloudflare R2 object key
+    document_name: Optional[str] = None  # original filename
+    document_url: Optional[str] = None  # presigned URL — generated on demand, not stored
+    uploaded_by: Optional[str] = None  # user ID who uploaded
+    uploaded_at: Optional[datetime] = None
 
 
 class ClaimRequest(BaseModel):
