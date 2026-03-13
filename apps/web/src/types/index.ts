@@ -77,7 +77,6 @@ export interface FeatureContributions {
 // }
 
 export interface AdjudicationResult {
-  // ── Adjudication outputs ─────────────────────────────────────────
   claim_id: string;
   decision: Decision;
   risk_score: number;
@@ -128,6 +127,19 @@ export interface ClaimListItem {
   risk_score: number;
   claimed_amount: number;
   adjudicated_at: string;
+
+  diagnosis_code?: string;
+  procedure_code?: string;
+  approved_tariff?: number;
+  date_of_service?: string;
+  provider_type?: ProviderType;
+  location?: string;
+  member_age?: number;
+  is_duplicate?: boolean;
+  invoice_number?: string;
+  confidence?: number;
+  adjudication_stage?: 1 | 2 | 3;
+  processing_time_ms?: number;
 }
 
 export interface ClaimsListResponse {

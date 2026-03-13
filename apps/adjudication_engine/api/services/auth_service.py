@@ -90,6 +90,7 @@ async def create_user(
         "provider_id": None,
         "created_at": datetime.now(timezone.utc),
         "last_login": None,
+        "image": None,
     }
     await db.users.insert_one(user)
     return user
@@ -119,41 +120,54 @@ async def authenticate_user(
 async def get_or_create_oauth_user(
     db: AsyncIOMotorDatabase, data: OAuthUserData
 ) -> dict:
+    full_name = data.full_name or data.email.split("@")[0]
+
     # Look up by provider + provider_id first
     user = await db.users.find_one({
-        "provider": data.provider,
-        "provider_id": data.provider_id
+        "provider":    data.provider,
+        "provider_id": data.provider_id,
     })
     if user:
+        # Always refresh image in case it changed
+        if data.image:
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"image": data.image, "last_login": datetime.now(timezone.utc)}}
+            )
+            user["image"] = data.image
         return user
 
-    # Fall back to email match (if user may have registered with credentials)
+    # Fall back to email match
     user = await db.users.find_one({"email": data.email.lower()})
     if user:
-        # Link the OAuth provider to the existing account
         await db.users.update_one(
             {"_id": user["_id"]},
-            {"$set": {"provider": data.provider, "provider_id": data.provider_id}}
+            {"$set": {
+                "provider": data.provider,
+                "provider_id": data.provider_id,
+                "image": data.image,
+                "last_login":  datetime.now(timezone.utc),
+            }}
         )
+        user["image"] = data.image
         return user
 
-    # New user via OAuth — create with viewer role by default
-    full_name = data.full_name or data.email.split("@")[0]
+    # New OAuth user
     user = {
         "_id": str(uuid.uuid4()),
         "email": data.email.lower(),
         "password_hash": None,
         "full_name": full_name,
+        "image": data.image,
         "role": UserRole.viewer.value,
         "is_active": True,
         "provider": data.provider,
         "provider_id": data.provider_id,
         "created_at": datetime.now(timezone.utc),
-        "last_login": None,
+        "last_login": datetime.now(timezone.utc),
     }
     await db.users.insert_one(user)
     return user
-
 
 async def store_refresh_token(
     db: AsyncIOMotorDatabase, user_id: str, token: str

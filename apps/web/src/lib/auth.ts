@@ -74,6 +74,7 @@ export const authConfig: NextAuthConfig = {
             api_key: process.env.API_KEY_PRIMARY ?? "",
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
+            image: user.image ?? null, 
           } as AuthUser;
         } catch {
           return null;
@@ -86,10 +87,6 @@ export const authConfig: NextAuthConfig = {
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log("[auth:signIn] provider:", account?.provider);
-      console.log("[auth:signIn] account:", JSON.stringify(account, null, 2));
-      console.log("[auth:signIn] user:", JSON.stringify(user, null, 2));
-      console.log("[auth:signIn] profile:", JSON.stringify(profile, null, 2));
       if (!account) return true;
 
       // Handle all OAuth providers generically
@@ -102,6 +99,7 @@ export const authConfig: NextAuthConfig = {
             full_name: user.name ?? user.email?.split("@")[0] ?? "Unknown",
             provider,
             provider_id: account.providerAccountId,
+            image: user.image ?? null
           });
 
           const { data: fapiUser } = await axios.get(`${API}/auth/me`, {
@@ -113,6 +111,7 @@ export const authConfig: NextAuthConfig = {
           user.api_key = process.env.API_KEY_PRIMARY ?? "";
           user.access_token = tokens.access_token;
           user.refresh_token = tokens.refresh_token;
+          user.image = fapiUser.image ?? user.image;
         } catch (e) {
           console.error("[auth] OAuth FastAPI link failed:", e);
           return false;
@@ -132,6 +131,7 @@ export const authConfig: NextAuthConfig = {
         token.refresh_token = user.refresh_token;
         token.expires_at = Math.floor(Date.now() / 1000) + 15 * 60;
         token.refresh_error_count = 0;
+        token.image = user.image ?? null
         return token;
       }
 
@@ -182,6 +182,7 @@ export const authConfig: NextAuthConfig = {
       session.user.role = token.role as UserRole;
       session.user.api_key = token.api_key as string;
       session.error = token.error;
+      session.user.image = token.image as string ?? null
       return session;
     },
   },
