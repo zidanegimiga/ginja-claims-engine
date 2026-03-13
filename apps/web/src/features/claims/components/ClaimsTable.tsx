@@ -45,7 +45,7 @@ export function ClaimsTable({
           { icon: Hash, label: "Claim ID" },
           { icon: User, label: "Member" },
           { icon: Building2, label: "Provider" },
-          // { icon: null, label: "Amount" },
+          { icon: null, label: "Amount" },
           { icon: null, label: "Decision" },
           { icon: Clock, label: "Date" },
           { icon: null, label: "" },
@@ -82,19 +82,19 @@ export function ClaimsTable({
               onClick={() => router.push(`/claims/${claim.claim_id}`)}
               className="grid grid-cols-[1fr_1fr_1fr_100px_80px_140px_32px] gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors duration-150 cursor-pointer group"
             >
-              {/* <span className="text-[12px] font-mono text-muted-foreground tabular-nums truncate">
+              <span className="text-[12px] font-mono text-muted-foreground tabular-nums truncate">
                 {truncateId(claim.claim_id, 12)}
-              </span> */}
+              </span>
               <span className="text-[12px] text-foreground font-mono tabular-nums truncate">
                 {claim.member_id}
               </span>
               <span className="text-[12px] text-muted-foreground truncate">
                 {claim.provider_id}
               </span>
-              {/* <span className="text-[12px] font-mono tabular-nums text-foreground">
+              <span className="text-[12px] font-mono tabular-nums text-foreground">
                 {formatCurrency(claim.claimed_amount)}
-                {claim.claimed_amount}
-              </span> */}
+                {/* {claim.claimed_amount} */}
+              </span>
               <DecisionBadge decision={claim.decision} />
               <span className="text-[11px] text-muted-foreground tabular-nums">
                 {formatDateTime(claim.adjudicated_at)}

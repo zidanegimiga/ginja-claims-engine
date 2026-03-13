@@ -2,6 +2,16 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Decision } from "@/types";
 
+const CURRENCY_LOCALES: Record<string, string> = {
+  KES: "en-KE",
+  RWF: "rw-RW",
+  UGX: "en-UG",
+  TZS: "en-TZ",
+  USD: "en-US",
+  EUR: "en-DE",
+  GBP: "en-GB",
+};
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -37,32 +47,54 @@ export function getRiskBarColor(score: number): string {
 
 // Formatting
 export function formatCurrency(
-  amount: number,
+  amount: number | null | undefined,
   currency: string = "KES",
 ): string {
-  return new Intl.NumberFormat("en-KE", {
+  if (amount === null || amount === undefined || isNaN(amount)) return "—";
+
+  const locale = CURRENCY_LOCALES[currency] ?? "en-KE";
+
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
-export function formatDate(dateString: string): string {
-  return new Intl.DateTimeFormat("en-KE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(dateString));
+function parseDate(dateString: string | null | undefined): Date | null {
+  if (!dateString) return null;
+  const d = new Date(dateString);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-export function formatDateTime(dateString: string): string {
-  return new Intl.DateTimeFormat("en-KE", {
-    day: "2-digit",
+function getUserLocale(): string {
+  if (typeof navigator !== "undefined") return navigator.language;
+  return "en-KE"; // SSR fallback
+}
+
+export function formatDate(dateString: string | null | undefined): string {
+  const d = parseDate(dateString);
+  if (!d) return "—";
+
+  return new Intl.DateTimeFormat(getUserLocale(), {
+    day:   "2-digit",
     month: "short",
-    year: "numeric",
-    hour: "2-digit",
+    year:  "numeric",
+  }).format(d);
+}
+
+export function formatDateTime(dateString: string | null | undefined): string {
+  const d = parseDate(dateString);
+  if (!d) return "—";
+
+  return new Intl.DateTimeFormat(getUserLocale(), {
+    day:    "2-digit",
+    month:  "short",
+    year:   "numeric",
+    hour:   "2-digit",
     minute: "2-digit",
-  }).format(new Date(dateString));
+  }).format(d);
 }
 
 export function formatDuration(ms: number): string {
@@ -76,6 +108,10 @@ export function formatPercent(value: number, decimals: number = 1): string {
 
 // Truncation
 export function truncateId(id: string, chars: number = 8): string {
+  console.log("id", id);
+
+  if (!id) return "not_present";
+
   if (id.length <= chars) return id;
   return `${id.slice(0, chars)}…`;
 }
