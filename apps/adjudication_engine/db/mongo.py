@@ -1,4 +1,5 @@
 import os
+import asyncio
 from dotenv import load_dotenv
 from typing import AsyncGenerator
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
@@ -7,64 +8,65 @@ from datetime import datetime, timezone
 load_dotenv()
 
 _client = None
-_db = None
+_db     = None
+_loop   = None
+
 
 
 def get_database():
     """
     Returns the MongoDB database instance.
-    Uses a module-level singleton so we don't
-    create a new connection on every request.
+    Recreates the client if the event loop has changed —
+    this prevents 'Event loop is closed' errors when
+    multiple test modules run sequentially.
     """
-    global _client, _db
-    if _db is None:
-        uri = os.getenv("MONGODB_URI")
+    global _client, _db, _loop
+
+    try:
+        current_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        current_loop = None
+
+    if _db is None or _loop != current_loop:
+        if _client is not None:
+            _client.close()
+        uri     = os.getenv("MONGODB_URI")
         db_name = os.getenv("MONGODB_DB_NAME", "ginja_claims")
         _client = AsyncIOMotorClient(uri)
-        _db = _client[db_name]
-    return _db
+        _db     = _client[db_name]
+        _loop   = current_loop
 
+    return _db
 
 async def save_adjudication_result(result: dict) -> None:
     """
     Saves a completed adjudication result to MongoDB.
-    Merges the full claim payload including patient details,
-    source metadata, and document references.
+    Raises on failure so the caller knows the save did not complete.
     """
-    try:
-        db = get_database()
-        collection = db["claims"]
+    db = get_database()
+    collection = db["claims"]
 
-        # Add server-side timestamps if not present
-        from datetime import datetime, timezone
-        if "adjudicated_at" not in result:
-            result["adjudicated_at"] = datetime.now(timezone.utc).isoformat()
+    if "adjudicated_at" not in result:
+        result["adjudicated_at"] = datetime.now(timezone.utc).isoformat()
 
-        await collection.update_one(
-            {"claim_id": result["claim_id"]},
-            {"$set": result},
-            upsert=True,
-        )
-    except Exception as e:
-        print(f"MongoDB save error: {e}")
+    await collection.update_one(
+        {"claim_id": result["claim_id"]},
+        {"$set": result},
+        upsert=True,
+    )
 
 
 async def get_adjudication_result(claim_id: str) -> dict | None:
     """
     Retrieves a single adjudication result by claim ID.
-    Returns None if not found.
+    Raises on failure rather than silently returning None.
     """
-    try:
-        db  = get_database()
-        collection = db["claims"]
-        result = await collection.find_one(
-            {"claim_id": claim_id},
-            {"_id": 0},
-        )
-        return result
-    except Exception as e:
-        print(f"MongoDB fetch error: {e}")
-        return None
+    db = get_database()
+    collection = db["claims"]
+    return await collection.find_one(
+        {"claim_id": claim_id},
+        {"_id": 0},
+    )
 
 
 async def list_adjudication_results(
@@ -72,22 +74,13 @@ async def list_adjudication_results(
     limit: int = 20,
     skip: int = 0,
 ) -> list[dict]:
-    """
-    Returns a paginated list of adjudication results.
-    Optionally filtered by decision type.
-    """
-    try:
-        db = get_database()
-        collection = db["claims"]
-        query  = {}
-        if decision:
-            query["decision"] = decision
-        cursor = collection.find(query, {"_id": 0}).skip(skip).limit(limit)
-        return await cursor.to_list(length=limit)
-    except Exception as e:
-        print(f"MongoDB list error: {e}")
-        return []
-
+    db = get_database()
+    collection = db["claims"]
+    query = {}
+    if decision:
+        query["decision"] = decision
+    cursor = collection.find(query, {"_id": 0}).skip(skip).limit(limit)
+    return await cursor.to_list(length=limit)
 
 async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     """
