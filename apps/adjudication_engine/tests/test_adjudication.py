@@ -74,3 +74,50 @@ async def test_adjudicate_missing_required_field(client: AsyncClient, api_header
     )
     assert res.status_code == 422
 
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_persists_claim_fields(client: AsyncClient, api_headers: dict):
+    res = await client.post(
+        "/api/v1/adjudicate",
+        json=VALID_CLAIM,
+        headers=api_headers,
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["member_id"]      == VALID_CLAIM["member_id"]
+    assert data["provider_id"]    == VALID_CLAIM["provider_id"]
+    assert data["claimed_amount"] == VALID_CLAIM["claimed_amount"]
+    assert data["diagnosis_code"] == VALID_CLAIM["diagnosis_code"]
+    assert data["location"]       == VALID_CLAIM["location"]
+
+
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_future_date_rejected(client: AsyncClient, api_headers: dict):
+    claim = {**VALID_CLAIM, "date_of_service": "2099-01-01"}
+    res   = await client.post(
+        "/api/v1/adjudicate",
+        json=claim,
+        headers=api_headers,
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["decision"]           == "Fail"
+    assert data["adjudication_stage"] == 1
+
+
+@pytest.mark.anyio(scope="module")
+async def test_adjudicate_high_amount_flagged(client: AsyncClient, api_headers: dict):
+    claim = {
+        **VALID_CLAIM,
+        "claimed_amount":  500_000.0,
+        "approved_tariff": 5_000.0,
+    }
+    res = await client.post(
+        "/api/v1/adjudicate",
+        json=claim,
+        headers=api_headers,
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["decision"] in ("Flag", "Fail")
+
+

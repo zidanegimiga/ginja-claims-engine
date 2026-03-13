@@ -48,7 +48,7 @@ async def adjudicate_claim(claim: ClaimRequest, request: Request, auth: dict = D
     """
     try:
         raw_claim = claim.model_dump()
-        result    = adjudicate(raw_claim)
+        result = adjudicate(raw_claim)
 
         await save_adjudication_result(result)
 

@@ -85,9 +85,22 @@ class AdjudicationResponse(BaseModel):
     claim_id: str
     member_id: str
     provider_id: str
+    diagnosis_code: str
+    procedure_code: str
+    claimed_amount: float
+    approved_tariff: float
+    date_of_service: str
+    provider_type: str
+    location: str
+    member_age: Optional[int]  = None
+    is_duplicate: Optional[int]  = None
+    invoice_number: Optional[str]  = None
+    notes: Optional[str]  = None
+    patient: Optional[PatientDetails] = None
+    source: Optional[ClaimSource]    = None
     decision: str
-    risk_score:  float
-    confidence:  float
+    risk_score: float
+    confidence: float
     reasons: list[str]
     explanation_of_benefits: str
     feature_contributions: dict
