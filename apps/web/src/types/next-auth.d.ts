@@ -7,9 +7,12 @@ declare module "next-auth" {
     id: string;
     role: UserRole;
     api_key: string;
+    access_token?: string;
+    refresh_token?: string;
   }
 
   interface Session {
+    error?: "RefreshTokenExpired";
     user: {
       id: string;
       email: string;
@@ -25,6 +28,9 @@ declare module "next-auth/jwt" {
     id: string;
     role: UserRole;
     api_key: string;
-    needs_refresh?: boolean;
+    access_token?:  string;
+    refresh_token?: string;
+    expires_at?: number;
+    error?: "RefreshTokenExpired";
   }
 }
