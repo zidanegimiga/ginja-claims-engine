@@ -106,14 +106,15 @@ export const authConfig: NextAuthConfig = {
     },
 
     async jwt({ token, user }) {
+      // initial sign-in
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.api_key = user.api_key;
         token.access_token = user.access_token;
         token.refresh_token = user.refresh_token;
-        // set expiry 15 minutes from now
         token.expires_at = Math.floor(Date.now() / 1000) + 15 * 60;
+        token.refresh_error_count = 0;
         return token;
       }
 
@@ -122,10 +123,10 @@ export const authConfig: NextAuthConfig = {
       const now = Math.floor(Date.now() / 1000);
       const expiresAt = token.expires_at as number;
 
-      // still valid with more than 2 minutes to spare, no refresh needed
-      if (now < expiresAt - 120) return token;
+      // Token valid for more than 3 minutes, no action needed.
+      // 3 min buffer reduces the window where concurrent requests both decide to refresh at the same time.
+      if (now < expiresAt - 180) return token;
 
-      // No refresh token available, can't rotate, force re-login
       if (!token.refresh_token) {
         return { ...token, error: "RefreshTokenExpired" };
       }
@@ -135,15 +136,30 @@ export const authConfig: NextAuthConfig = {
         const { data } = await axios.post(`${API}/auth/refresh`, {
           refresh_token: token.refresh_token,
         });
+
         return {
           ...token,
           access_token: data.access_token,
           refresh_token: data.refresh_token,
           expires_at: Math.floor(Date.now() / 1000) + 15 * 60,
+          refresh_error_count: 0,
           error: undefined,
         };
       } catch {
-        return { ...token, error: "RefreshTokenExpired" };
+        // Allow up to 2 consecutive refresh failures before forcing logout.
+        // This tolerates the race condition where a second concurrent request tries to refresh with an already-rotated token.
+        const errorCount = ((token.refresh_error_count as number) ?? 0) + 1;
+
+        if (errorCount >= 2) {
+          return {
+            ...token,
+            error: "RefreshTokenExpired",
+            refresh_error_count: errorCount,
+          };
+        }
+
+        // First failure, keep the session alive, try again next request
+        return { ...token, refresh_error_count: errorCount };
       }
     },
 

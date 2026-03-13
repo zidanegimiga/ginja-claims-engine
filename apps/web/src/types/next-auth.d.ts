@@ -28,9 +28,22 @@ declare module "next-auth/jwt" {
     id: string;
     role: UserRole;
     api_key: string;
-    access_token?:  string;
+    access_token?: string;
     refresh_token?: string;
     expires_at?: number;
+    error?: "RefreshTokenExpired";
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: UserRole;
+    api_key: string;
+    access_token?: string;
+    refresh_token?: string;
+    expires_at?: number;
+    refresh_error_count?: number;
     error?: "RefreshTokenExpired";
   }
 }
