@@ -16,13 +16,22 @@ class PatientDetails(BaseModel):
     scheme_number: Optional[str] = None  # insurance scheme / policy number
 
 class ClaimSource(BaseModel):
-    """Tracks how the claim entered the system."""
+    """
+    Tracks how the claim entered the system.
+    
+    - source_type: how the claim was submitted
+    - documents: up to 2 documents for cross-reference
+      index 0 = primary (e.g. hospital invoice)
+      index 1 = secondary (e.g. lab report or prescription)
+    - cross_reference_score: agreement score between the two docs (0–1)
+    """
     source_type: Literal["pdf", "csv", "json", "api", "manual"] = "api"
-    document_key: Optional[str] = None    # Bucket storage object key
-    document_name: Optional[str] = None  # original filename
-    document_url: Optional[str] = None  # presigned URL — generated on demand, not stored
-    uploaded_by: Optional[str] = None  # user ID who uploaded
-    uploaded_at: Optional[datetime] = None
+    documents:   list[DocumentReference] = Field(default_factory=list, max_length=2)
+    cross_reference_score:    Optional[float] = None
+    cross_reference_warnings: Optional[list[str]] = None
+    uploaded_by:  Optional[str]     = None
+    uploaded_at:  Optional[datetime] = None
+
 
 class ClaimRequest(BaseModel):
     """
@@ -98,3 +107,14 @@ class HealthResponse(BaseModel):
     status: str
     model_loaded: bool
     version: str
+
+
+class DocumentReference(BaseModel):
+    """A single document attached to a claim."""
+    document_key: str
+    document_name: str
+    document_type: Literal["pdf", "csv", "json", "image"]
+    uploaded_by: str # user ID
+    uploaded_at: datetime
+    extraction_confidence: Optional[float] = None  # from the vision provider
+    extraction_provider: Optional[str]  = None  # gemini, ollama, tesseract

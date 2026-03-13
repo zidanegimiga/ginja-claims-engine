@@ -7,9 +7,12 @@ import {
   ClaimRequest,
 } from "@/types";
 
-export async function fetchDocumentUrl(claimId: string): Promise<string> {
+export async function fetchDocumentUrl(
+  claimId: string,
+  documentIndex: 0 | 1 = 0,
+): Promise<string> {
   const { data } = await apiClient.get<{ url: string }>(
-    `/documents/view/${claimId}`,
+    `/documents/view/${claimId}?document_index=${documentIndex}`,
   );
   return data.url;
 }

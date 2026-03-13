@@ -32,22 +32,6 @@ export const authConfig: NextAuthConfig = {
       async authorize(credentials): Promise<AuthUser | null> {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // Dev shortcut
-        if (process.env.NODE_ENV === "development") {
-          if (
-            credentials.email === process.env.DEV_USER_EMAIL &&
-            credentials.password === process.env.DEV_USER_PASSWORD
-          ) {
-            return {
-              id: "dev-001",
-              email: credentials.email as string,
-              name: "Zidane Gimiga",
-              role: "admin" as UserRole,
-              api_key: process.env.API_KEY_PRIMARY ?? "",
-            };
-          }
-        }
-
         const endpoint =
           credentials.mode === "register" ? "/auth/register" : "/auth/login";
 
@@ -58,13 +42,14 @@ export const authConfig: NextAuthConfig = {
                 password: credentials.password,
                 full_name: credentials.name,
               }
-            : { email: credentials.email, password: credentials.password };
+            : {
+                email: credentials.email,
+                password: credentials.password,
+              };
 
         try {
-          // Get token pair from FastAPI
           const { data: tokens } = await axios.post(`${API}${endpoint}`, body);
 
-          // Fetch user profile
           const { data: user } = await axios.get(`${API}/auth/me`, {
             headers: { Authorization: `Bearer ${tokens.access_token}` },
           });
@@ -89,7 +74,7 @@ export const authConfig: NextAuthConfig = {
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      // OAuth sign-in — create/link user in FastAPI
+      // oAuth sign-in, create/link user in FastAPI
       if (
         account?.provider === "google" ||
         account?.provider === "microsoft-entra-id"
@@ -108,7 +93,7 @@ export const authConfig: NextAuthConfig = {
             headers: { Authorization: `Bearer ${tokens.access_token}` },
           });
 
-          // Attach to user object for jwt callback
+          // attach to user object for jwt callback
           user.role = fapiUser.role;
           user.api_key = process.env.API_KEY_PRIMARY ?? "";
           user.access_token = tokens.access_token;
@@ -127,15 +112,25 @@ export const authConfig: NextAuthConfig = {
         token.api_key = user.api_key;
         token.access_token = user.access_token;
         token.refresh_token = user.refresh_token;
+        // set expiry 15 minutes from now
         token.expires_at = Math.floor(Date.now() / 1000) + 15 * 60;
+        return token;
       }
 
-      // Silent refresh if access token expires in < 2 minutes, rotate
+      if (!token.expires_at) return token;
+
       const now = Math.floor(Date.now() / 1000);
-      const expiresAt = (token.expires_at as number) ?? 0;
+      const expiresAt = token.expires_at as number;
 
-      if (now < expiresAt - 120) return token; // Still valid
+      // still valid with more than 2 minutes to spare, no refresh needed
+      if (now < expiresAt - 120) return token;
 
+      // No refresh token available, can't rotate, force re-login
+      if (!token.refresh_token) {
+        return { ...token, error: "RefreshTokenExpired" };
+      }
+
+      // Silent refresh
       try {
         const { data } = await axios.post(`${API}/auth/refresh`, {
           refresh_token: token.refresh_token,
@@ -145,9 +140,9 @@ export const authConfig: NextAuthConfig = {
           access_token: data.access_token,
           refresh_token: data.refresh_token,
           expires_at: Math.floor(Date.now() / 1000) + 15 * 60,
+          error: undefined,
         };
       } catch {
-        // Refresh failed — force sign out on next request
         return { ...token, error: "RefreshTokenExpired" };
       }
     },

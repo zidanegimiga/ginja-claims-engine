@@ -9,6 +9,25 @@ export type ProviderType =
 
 export type UserRole = "admin" | "claims_officer" | "viewer";
 
+export interface DocumentReference {
+  document_key: string;
+  document_name: string;
+  document_type: "pdf" | "csv" | "json" | "image";
+  uploaded_by: string;
+  uploaded_at: string;
+  extraction_confidence?: number;
+  extraction_provider?: string;
+}
+
+export interface ClaimSource {
+  source_type: "pdf" | "csv" | "json" | "api" | "manual";
+  documents: DocumentReference[]; // max 2
+  cross_reference_score?: number;
+  cross_reference_warnings?: string[];
+  uploaded_by?: string;
+  uploaded_at?: string;
+}
+
 export interface ClaimRequest {
   claim_id?: string;
   member_id: string;

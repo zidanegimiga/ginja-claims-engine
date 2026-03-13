@@ -15,22 +15,23 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
 
 class PresignedUploadRequest(BaseModel):
     filename: str
-    content_type: str  # "application/pdf", "text/csv"
+    content_type: str
+    document_index: Literal[0, 1] = 0  # 0 = primary, 1 = secondary
 
 
 class PresignedUploadResponse(BaseModel):
     upload_url: str
     document_key: str
     document_name: str
+    document_index: int
 
 
 class DocumentUrlResponse(BaseModel):
-    url:          str
-    expires_in:   int = 900  # seconds
+    url: str
+    expires_in: int = 900  # seconds
 
 
 # Generate presigned upload URL
-
 @router.post("/upload-url", response_model=PresignedUploadResponse)
 async def get_upload_url(
     body:         PresignedUploadRequest,
@@ -68,25 +69,28 @@ async def get_upload_url(
 
 @router.get("/view/{claim_id}", response_model=DocumentUrlResponse)
 async def get_document_url(
-    claim_id: str,
-    current_user: dict = Depends(get_current_user),
+    claim_id:       str,
+    document_index: int = Query(default=0, ge=0, le=1),
+    current_user:   dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
     """
-    Generates a temporary presigned download URL for the document
-    attached to a claim. Viewers and above can access.
-    The URL expires in 15 minutes and is never stored.
+    Generates a temporary presigned download URL for a document
+    attached to a claim. document_index=0 is primary, 1 is secondary.
     """
     claim = await db.claims.find_one({"claim_id": claim_id})
     if not claim:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Claim not found")
 
-    source = claim.get("source")
-    if not source or not source.get("document_key"):
+    source    = claim.get("source", {})
+    documents = source.get("documents", [])
+
+    if document_index >= len(documents):
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            "No document attached to this claim"
+            f"No document at index {document_index} for this claim"
         )
 
-    url = generate_presigned_download_url(source["document_key"])
+    key = documents[document_index]["document_key"]
+    url = generate_presigned_download_url(key)
     return DocumentUrlResponse(url=url)
