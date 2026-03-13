@@ -138,11 +138,12 @@ async def get_or_create_oauth_user(
         return user
 
     # New user via OAuth — create with viewer role by default
+    full_name = data.full_name or data.email.split("@")[0]
     user = {
         "_id": str(uuid.uuid4()),
         "email": data.email.lower(),
         "password_hash": None,
-        "full_name": data.full_name,
+        "full_name": full_name,
         "role": UserRole.viewer.value,
         "is_active": True,
         "provider": data.provider,

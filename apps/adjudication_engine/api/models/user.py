@@ -42,6 +42,6 @@ class RefreshRequest(BaseModel):
 
 class OAuthUserData(BaseModel):
     email: EmailStr
-    full_name: str
+    full_name:   Optional[str] = None
     provider: str # "google" | "microsoft"
     provider_id: str

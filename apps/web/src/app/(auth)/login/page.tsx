@@ -60,7 +60,7 @@ const panelVariants = {
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  // const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const sessionError = searchParams.get("error");
 
   const [mode, setMode] = useState<Mode>("login");
@@ -96,11 +96,25 @@ export default function AuthPage() {
   // OAuth
   async function handleOAuth(provider: "google" | "microsoft") {
     setOauthLoading(provider);
-    await signIn(provider === "microsoft" ? "microsoft-entra-id" : provider, {
-      callbackUrl,
+    await signIn(provider === "microsoft" ? "azure-ad" : provider, {
+      callbackUrl: new URL(`/dashboard`, window.location.origin).href,
     });
     setOauthLoading(null);
   }
+
+    // const microsoft_auth = async (e) => {
+    //   e.preventDefault();
+    //   await signIn("azure-ad", {
+    //     redirect: true,
+    //     callbackUrl: new URL(`/auth/login-confirmation`, window.location.origin)
+    //       .href,
+    //   });
+    //   // await signIn('microsoft-entra-id', {
+    //   //   redirect: true,
+    //   //   callbackUrl: new URL(`/auth/login-confirmation`, window.location.origin)
+    //   //     .href,
+    //   // });
+    // };
 
   // Login submit
   async function onLogin(data: LoginForm) {
@@ -115,7 +129,7 @@ export default function AuthPage() {
       setAuthError("Invalid email or password.");
       return;
     }
-    router.push(callbackUrl);
+    router.push('/dashboard');
     router.refresh();
   }
 
@@ -137,7 +151,7 @@ export default function AuthPage() {
       );
       return;
     }
-    router.push(callbackUrl);
+    router.push('/dashboard');
     router.refresh();
   }
 
