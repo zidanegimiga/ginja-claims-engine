@@ -88,9 +88,6 @@ export async function fetchClaim(claimId: string): Promise<AdjudicationResult> {
 export async function adjudicateClaim(
   claim: ClaimRequest,
 ): Promise<AdjudicationResult> {
-  const { data } = await apiClient.post<AdjudicationResult>(
-    "/adjudicate",
-    claim,
-  );
+const { data } = await apiClient.post<AdjudicationResult>("/claims/adjudicate", claim);
   return data;
 }
