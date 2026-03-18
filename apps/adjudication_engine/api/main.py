@@ -104,7 +104,7 @@ async def metrics_middleware(request, call_next):
     return response
 
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=640)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,

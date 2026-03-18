@@ -14,6 +14,11 @@ import uuid
 from api.services.extraction_service import extract_claim_from_pdf
 from pydantic import BaseModel
 from api.middleware import verify_api_key
+from api.services.storage_service import (
+    get_r2_client,
+    generate_upload_key,
+    generate_presigned_download_url,
+)
 
 
 router = APIRouter()
@@ -371,3 +376,55 @@ async def adjudicate_pdf(
         # Clean up temp file
         os.unlink(tmp_path)
 
+
+@router.post(
+    "/claims/upload",
+    tags=["Claims"],
+    summary="Upload a PDF to R2 storage",
+)
+async def upload_document(
+    request: Request,
+    auth: dict = Depends(require_write),
+    file: UploadFile = File(...),
+):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
+    contents = await file.read()
+    user_id = auth.get("key_id", "unknown")
+    document_key = generate_upload_key(file.filename, user_id)
+
+    try:
+        client = get_r2_client()
+        client.put_object(
+            Bucket=os.environ["R2_BUCKET_NAME"],
+            Key=document_key,
+            Body=contents,
+            ContentType="application/pdf",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+
+    return {
+        "key": document_key,
+        "filename": file.filename,
+        "size": len(contents),
+    }
+
+
+@router.get(
+    "/claims/document-url",
+    tags=["Claims"],
+    summary="Get a presigned URL for a stored document",
+)
+async def get_document_url(
+    key: str = Query(..., description="R2 object key"),
+    request: Request = None,
+    auth: dict = Depends(require_read),
+):
+    try:
+        url = generate_presigned_download_url(key)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Document not found: {key}")
+
+    return {"url": url}
