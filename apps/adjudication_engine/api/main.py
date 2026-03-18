@@ -4,6 +4,7 @@ import json
 import pickle
 import xgboost as xgb
 
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from fastapi import FastAPI, Request
@@ -13,6 +14,7 @@ from contextlib import asynccontextmanager
 from api.routes import claims, health
 from api.routes.auth import router as auth_router
 from api.routes.documents import router as documents_router
+from api.core.config import settings
 from api.middleware import (
     RequestIDMiddleware,
     SecurityHeadersMiddleware,
@@ -104,11 +106,11 @@ async def metrics_middleware(request, call_next):
     return response
 
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RateLimitMiddleware, requests_per_minute=640)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=7200)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins  = os.getenv("ALLOWED_ORIGINS", "*").split(","),
+    allow_origins  = settings.CORS_ORIGINS,
     allow_methods  = ["GET", "POST"],
     allow_headers  = ["*"],
 )

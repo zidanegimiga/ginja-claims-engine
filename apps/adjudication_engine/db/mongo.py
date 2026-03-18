@@ -30,11 +30,11 @@ def get_database():
     if _db is None or _loop != current_loop:
         if _client is not None:
             _client.close()
-        uri     = os.getenv("MONGODB_URI")
+        uri = os.getenv("MONGODB_URI")
         db_name = os.getenv("MONGODB_DB_NAME", "ginja_claims")
         _client = AsyncIOMotorClient(uri)
-        _db     = _client[db_name]
-        _loop   = current_loop
+        _db = _client[db_name]
+        _loop = current_loop
 
     return _db
 
@@ -73,14 +73,19 @@ async def list_adjudication_results(
     decision: str | None = None,
     limit: int = 20,
     skip: int = 0,
-) -> list[dict]:
+) -> tuple[int, list[dict]]:
     db = get_database()
     collection = db["claims"]
+
     query = {}
     if decision:
         query["decision"] = decision
-    cursor = collection.find(query, {"_id": 0}).skip(skip).limit(limit)
-    return await cursor.to_list(length=limit)
+
+    total  = await collection.count_documents(query)
+    cursor = collection.find(query, {"_id": 0}).sort("adjudicated_at", -1).skip(skip).limit(limit)
+    results = await cursor.to_list(length=limit)
+
+    return total, results
 
 async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     """

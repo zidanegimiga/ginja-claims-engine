@@ -101,7 +101,7 @@ def detect_drift(
 
     # Load recent production claims from MongoDB
     client = MongoClient(os.getenv("MONGODB_URI"))
-    db = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
+    db = client[settings.MONGODB_DB_NAME]
 
     since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
     recent_claims = list(
@@ -196,7 +196,7 @@ def log_drift_report(report: dict) -> None:
     """
     try:
         client = MongoClient(os.getenv("MONGODB_URI"))
-        db = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
+        db = client[settings.MONGODB_DB_NAME]
         db["drift_reports"].insert_one(report)
         client.close()
     except Exception as e:

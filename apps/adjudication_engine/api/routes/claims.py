@@ -14,10 +14,12 @@ import uuid
 from api.services.extraction_service import extract_claim_from_pdf
 from pydantic import BaseModel
 from api.middleware import verify_api_key
+from api.services.storage_service import ( get_r2_client, generate_upload_key, generate_presigned_download_url )
+import os
 from api.services.storage_service import (
-    get_r2_client,
     generate_upload_key,
     generate_presigned_download_url,
+    upload_bytes,
 )
 
 
@@ -270,7 +272,7 @@ async def get_claim(
 
 @router.get(
     "/claims",
-    tags    = ["Claims"],
+    tags = ["Claims"],
     summary = "List adjudicated claims with optional filters",
 )
 async def list_claims(
@@ -285,10 +287,10 @@ async def list_claims(
     Optionally filter by decision type.
     """
 
-    results = await list_adjudication_results(
+    total, results = await list_adjudication_results(
         decision=decision, limit=limit, skip=skip
     )
-    return {"total": len(results), "skip": skip, "limit": limit, "results": results}
+    return {"total": total, "skip": skip, "limit": limit, "results": results}
 
 
 @router.post(
@@ -395,13 +397,7 @@ async def upload_document(
     document_key = generate_upload_key(file.filename, user_id)
 
     try:
-        client = get_r2_client()
-        client.put_object(
-            Bucket=os.environ["R2_BUCKET_NAME"],
-            Key=document_key,
-            Body=contents,
-            ContentType="application/pdf",
-        )
+        upload_bytes(document_key, contents, content_type="application/pdf")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
 

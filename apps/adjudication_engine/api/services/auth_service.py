@@ -5,12 +5,14 @@ from typing import Optional
 
 from jose import JWTError, jwt
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from api.core.config import settings
 
 from api.models.user import UserRole, TokenPair, OAuthUserData
+from api.core.config import settings
 
 import os
 
-SECRET_KEY = os.environ["JWT_SECRET_KEY"]
+SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRY = 15 # minutes
 REFRESH_TOKEN_EXPIRY = 7 * 24 * 60  # 7 days in minutes

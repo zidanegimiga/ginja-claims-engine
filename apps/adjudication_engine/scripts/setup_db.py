@@ -23,7 +23,7 @@ load_dotenv()
 
 def setup_indexes():
     client = MongoClient(os.getenv("MONGODB_URI"))
-    db = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
+    db = client[settings.MONGODB_DB_NAME]
 
     print("Creating database indexes...")
 

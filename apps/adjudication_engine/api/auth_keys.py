@@ -36,6 +36,7 @@ from fastapi.security import APIKeyHeader
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from monitoring.logger import get_logger
+from api.core.config import settings
 
 load_dotenv()
 
@@ -46,8 +47,13 @@ VALID_SCOPES = {"read", "write", "admin"}
 
 
 def get_db():
-    client = MongoClient(os.getenv("MONGODB_URI"))
-    db = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
+    print(f"========================================== \n\n ========")
+    print("Connecting to MongoDB...")
+    print(f"========================================== \n\n ========")
+    print(f"========================================== DB NAME: {settings.MONGODB_DB_NAME}".format(settings.MONGODB_DB_NAME))
+    print(f"========================================== \n\n ========")
+    client = MongoClient(settings.MONGODB_URI)
+    db = client[settings.MONGODB_DB_NAME]
     return db, client
 
 
@@ -302,3 +308,4 @@ def _log_auth_failure(reason: str, ip: str, **extra) -> None:
         f"Authentication failed: {reason}",
         extra={"reason": reason, "client_ip": ip, **extra}
     )
+

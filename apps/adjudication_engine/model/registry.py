@@ -27,7 +27,7 @@ load_dotenv()
 
 def get_registry_collection():
     client = MongoClient(os.getenv("MONGODB_URI"))
-    db = client[os.getenv("MONGODB_DB_NAME", "ginja_claims")]
+    db = client[settings.MONGODB_DB_NAME]
     return db["model_registry"], client
 
 

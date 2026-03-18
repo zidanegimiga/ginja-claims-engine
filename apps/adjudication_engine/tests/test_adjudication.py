@@ -34,7 +34,7 @@ async def client():
 
 @pytest.fixture(scope="module")
 def api_headers():
-    key = os.environ.get("API_KEY_PRIMARY", "")
+    key = settings.API_KEY_PRIMARY
     if not key:
         pytest.skip("API_KEY_PRIMARY not set — skipping adjudication tests")
     return {"X-API-Key": key}
