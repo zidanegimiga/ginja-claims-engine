@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from dotenv import load_dotenv
 
+from api.core.config import settings
+
 load_dotenv()
 
 

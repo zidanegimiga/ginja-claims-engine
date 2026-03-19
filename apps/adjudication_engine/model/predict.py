@@ -5,16 +5,19 @@ import pandas as pd
 import xgboost as xgb
 from dotenv import load_dotenv
 
+import os
+
 load_dotenv()
 
 # THRESHOLDS
 # These map a probability score to a decision.
-# 0.0 – 0.3  -> Pass  (likely legitimate)
-# 0.3 – 0.7 -> Flag  (needs human review)
-# 0.7 – 1.0 -> Fail  (likely fraud)
+# 0.0 – 0.3  -> Pass (likely legitimate)
+# 0.3 – 0.7 -> Flag (needs human review)
+# 0.7 – 1.0 -> Fail (likely fraud)
 
 THRESHOLD_PASS = 0.3
 THRESHOLD_FAIL = 0.7
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "artifacts")
 
 
 def load_model_artifacts():
@@ -22,14 +25,33 @@ def load_model_artifacts():
     Loads the trained model and SHAP explainer from disk.
     Called once at API startup, not on every request.
     """
-    model = xgb.XGBClassifier()
-    model.load_model("model/artifacts/xgboost_model.json")
+    # model_path = os.path.join(MODEL_DIR, "xgboost_model.json")
+    model_path = os.path.join(MODEL_DIR, "xgboost_model.json")
+    print("CWD:", os.getcwd())
+    print("MODEL PATH:", model_path)
+    print("EXISTS:", os.path.exists(model_path))
 
-    with open("model/artifacts/shap_explainer.pkl", "rb") as f:
+    model = xgb.XGBClassifier()
+    model.load_model(model_path)
+    # model = xgb.XGBClassifier()
+    # # model.load_model("model/artifacts/xgboost_model.json")
+    # model.load_model(model_path)
+
+    # with open("model/artifacts/shap_explainer.pkl", "rb") as f:
+    #     explainer = pickle.load(f)
+
+    # with open("model/artifacts/feature_columns.json") as f:
+    #     feature_columns = json.load(f)
+
+    explainer_path = os.path.join(MODEL_DIR, "shap_explainer.pkl")
+    features_path  = os.path.join(MODEL_DIR, "feature_columns.json")
+
+    with open(explainer_path, "rb") as f:
         explainer = pickle.load(f)
 
-    with open("model/artifacts/feature_columns.json") as f:
+    with open(features_path) as f:
         feature_columns = json.load(f)
+
 
     return model, explainer, feature_columns
 
@@ -160,8 +182,7 @@ def predict_claim(claim_features: dict) -> dict:
     """
     model, explainer, feature_columns = load_model_artifacts()
 
-    # Build a single-row dataframe in the exact column order
-    # the model was trained on, order matters
+    # Build a single-row dataframe in the exact column order the model was trained on, order matters
     feature_row = pd.DataFrame([{
         col: claim_features.get(col, 0)
         for col in feature_columns

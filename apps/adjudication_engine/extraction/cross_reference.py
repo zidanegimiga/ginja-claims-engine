@@ -256,7 +256,7 @@ def merge_documents(
         list(invoice.get("extraction_warnings") or [])
     )
     if cross_ref["fraud_signals"]:
-        warnings += [f"⚡ Cross-ref: {s}" for s in cross_ref["fraud_signals"]]
+        warnings += [f"  Cross-ref: {s}" for s in cross_ref["fraud_signals"]]
     merged["extraction_warnings"] = warnings
 
     return merged

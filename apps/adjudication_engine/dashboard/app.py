@@ -1,3 +1,4 @@
+#adjudication_engine/dashboard/app.py
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -101,7 +102,9 @@ with st.sidebar:
 
     page = st.radio(
         "Navigation",
-        ["📊 Dashboard", "🔍 Adjudicate Claim", "📄 Upload PDF", "📁 Batch Upload", "🤖 Model Insights"],
+        ["Dashboard", "Adjudicate Claim", "Upload PDF", "Batch Upload", 
+        # "Model Insights"
+        ],
         label_visibility="collapsed"
     )
 
@@ -117,13 +120,13 @@ with st.sidebar:
         placeholder="e.g. qwen2-vl, llava",
     )
     st.divider()
-    st.caption("Built for Ginja AI · Eden Care")
+    # st.caption("Built for Ginja AI · Eden Care")
 
 
 # PAGE: DASHBOARD
 
-if page == "📊 Dashboard":
-    st.title("🏥 Claims Adjudication Dashboard")
+if page == "Dashboard":
+    st.title("Claims Adjudication Dashboard")
     st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     claims = get_mongo_claims()
@@ -141,11 +144,11 @@ if page == "📊 Dashboard":
         avg_risk = df["risk_score"].mean() if "risk_score" in df.columns else 0
 
         col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Total Claims",    total)
-        col2.metric("✅ Passed",        passed,  f"{passed/total:.0%}")
-        col3.metric("⚠️ Flagged",       flagged, f"{flagged/total:.0%}")
-        col4.metric("❌ Failed",         failed,  f"{failed/total:.0%}")
-        col5.metric("Avg Risk Score",  f"{avg_risk:.3f}")
+        col1.metric("Total Claims", total)
+        col2.metric("Passed", passed, f"{passed/total:.0%}")
+        col3.metric("Flagged", flagged, f"{flagged/total:.0%}")
+        col4.metric("Failed", failed, f"{failed/total:.0%}")
+        col5.metric("Avg Risk Score", f"{avg_risk:.3f}")
 
         st.divider()
 
@@ -172,7 +175,7 @@ if page == "📊 Dashboard":
             if "risk_score" in df.columns:
                 fig2 = px.histogram(
                     df,
-                    x      = "risk_score",
+                    x = "risk_score",
                     nbins  = 30,
                     color  = "decision",
                     color_discrete_map = colors,
@@ -198,15 +201,15 @@ if page == "📊 Dashboard":
 
 # PAGE: ADJUDICATE CLAIM
 
-elif page == "🔍 Adjudicate Claim":
-    st.title("🔍 Adjudicate a Claim")
+elif page == "Adjudicate Claim":
+    st.title("Adjudicate a Claim")
     st.caption("Submit a claim payload for real-time adjudication")
 
     with st.form("claim_form"):
         st.subheader("Member & Provider")
         col1, col2, col3 = st.columns(3)
-        claim_id    = col1.text_input("Claim ID",    value="CLM-DEMO-001")
-        member_id   = col2.text_input("Member ID",   value="MEM-00001")
+        claim_id    = col1.text_input("Claim ID", value="CLM-DEMO-001")
+        member_id   = col2.text_input("Member ID", value="MEM-00001")
         provider_id = col3.text_input("Provider ID", value="PRV-00001")
 
         st.subheader("Clinical Codes")
@@ -233,14 +236,14 @@ elif page == "🔍 Adjudicate Claim":
 
         col9, col10, col11 = st.columns(3)
         provider_type = col9.selectbox("Provider Type", ["hospital", "clinic", "pharmacy", "laboratory", "specialist"])
-        location      = col10.selectbox("Location", ["Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret", "Kigali", "Kampala"])
-        member_age    = col11.number_input("Member Age", min_value=0, max_value=120, value=35)
+        location = col10.selectbox("Location", ["Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret", "Kigali", "Kampala"])
+        member_age = col11.number_input("Member Age", min_value=0, max_value=120, value=35)
 
         col12, col13 = st.columns(2)
-        member_freq   = col12.number_input("Member Claim Frequency", min_value=0, value=2)
+        member_freq = col12.number_input("Member Claim Frequency", min_value=0, value=2)
         provider_freq = col13.number_input("Provider Claim Frequency", min_value=0, value=8)
 
-        submitted = st.form_submit_button("⚡ Adjudicate", width="stretch")
+        submitted = st.form_submit_button("  Adjudicate", width="stretch")
 
     if submitted:
         from engine.adjudicator import adjudicate
@@ -323,18 +326,18 @@ elif page == "🔍 Adjudicate Claim":
 
 # PAGE: UPLOAD PDF
 
-elif page == "📄 Upload PDF":
-    st.title("📄 PDF Claim Extraction & Adjudication")
+elif page == "Upload PDF":
+    st.title("PDF Claim Extraction & Adjudication")
     st.caption(
         "Upload a claim form, invoice, or both together. "
         "When both are provided the system cross-references them "
         "for additional fraud signals."
     )
 
-    col_info1, col_info2, col_info3 = st.columns(3)
-    col_info1.info("☁️ **Gemini** — Best for handwritten forms")
-    col_info2.info("🖥️ **Ollama/Qwen** — Fully offline, privacy-first")
-    col_info3.info("📄 **Tesseract** — Digital PDFs, no API needed")
+    # col_info1, col_info2, col_info3 = st.columns(3)
+    # col_info1.info("**Gemini** — Best for handwritten forms")
+    # col_info2.info("**Ollama/Qwen** — Fully offline, privacy-first")
+    # col_info3.info("**Tesseract** — Digital PDFs, no API needed")
 
     st.subheader("Document Upload")
     col_up1, col_up2 = st.columns(2)
@@ -375,7 +378,7 @@ elif page == "📄 Upload PDF":
 
     if has_both:
         st.success(
-            "✅ Both documents uploaded — cross-reference validation will run"
+            "Both documents uploaded — cross-reference validation will run"
         )
     elif has_claim_form:
         st.info("📋 Claim form uploaded — single document adjudication")
@@ -383,7 +386,7 @@ elif page == "📄 Upload PDF":
         st.info("🧾 Invoice uploaded — single document adjudication")
 
     if has_claim_form or has_invoice:
-        if st.button("⚡ Extract & Adjudicate", width="stretch"):
+        if st.button(" Extract & Adjudicate", width="stretch"):
             from extraction.fallback import extract_with_fallback
             from extraction.cross_reference import cross_reference, merge_documents
             from engine.adjudicator import adjudicate
@@ -391,7 +394,7 @@ elif page == "📄 Upload PDF":
             import asyncio
             from db.mongo import save_adjudication_result
 
-            extracted_form    = None
+            extracted_form = None
             extracted_invoice = None
 
             # Extract claim form
@@ -408,7 +411,7 @@ elif page == "📄 Upload PDF":
                         model    = selected_model or None,
                     )
                 os.unlink(tmp_path)
-                st.success("✅ Claim form extracted")
+                st.success("Claim form extracted")
 
             # Extract invoice
             if has_invoice:
@@ -424,11 +427,11 @@ elif page == "📄 Upload PDF":
                         model = selected_model or None,
                     )
                 os.unlink(tmp_path)
-                st.success("✅ Invoice extracted")
+                st.success("Invoice extracted")
 
             # Cross-reference if both present
             if has_both:
-                st.subheader("🔍 Cross-Reference Analysis")
+                st.subheader("Cross-Reference Analysis")
                 cross_ref = cross_reference(extracted_form, extracted_invoice)
                 merged = merge_documents(
                     extracted_form, extracted_invoice, cross_ref
@@ -437,7 +440,7 @@ elif page == "📄 Upload PDF":
                 col_cr1, col_cr2, col_cr3 = st.columns(3)
                 col_cr1.metric(
                     "Documents Consistent",
-                    "✅ Yes" if cross_ref["is_consistent"] else "⚠️ No"
+                    "Yes" if cross_ref["is_consistent"] else "No"
                 )
                 col_cr2.metric(
                     "Cross-Ref Score",
@@ -449,18 +452,18 @@ elif page == "📄 Upload PDF":
                 )
 
                 if cross_ref["confirmations"]:
-                    with st.expander("✅ Confirmed matches"):
+                    with st.expander("Confirmed matches"):
                         for c in cross_ref["confirmations"]:
                             st.write(f"✓ {c}")
 
                 if cross_ref["mismatches"]:
                     with st.expander(
-                        f"⚠️ {len(cross_ref['mismatches'])} mismatches detected",
+                        f"{len(cross_ref['mismatches'])} mismatches detected",
                         expanded=True
                     ):
                         for m in cross_ref["mismatches"]:
                             severity_color = (
-                                "🔴" if m["severity"] == "high" else "🟡"
+                                "X" if m["severity"] == "high" else "OK"
                             )
                             st.write(
                                 f"{severity_color} **{m['field']}**: "
@@ -490,7 +493,7 @@ elif page == "📄 Upload PDF":
             if final_claim.get("extraction_warnings"):
                 with st.expander("Extraction warnings"):
                     for w in final_claim["extraction_warnings"]:
-                        st.warning(f"⚠️ {w}")
+                        st.warning(f"WARNING: {w}")
 
             # Adjudicate
             st.subheader("Adjudication Result")
@@ -531,11 +534,11 @@ elif page == "📄 Upload PDF":
 
                 fig = px.bar(
                     contrib_df,
-                    x           = "Contribution",
-                    y           = "Feature",
-                    color       = "Direction",
+                    x = "Contribution",
+                    y = "Feature",
+                    color = "Direction",
                     color_discrete_map = {
-                        "-> Fraud":      "#dc3545",
+                        "-> Fraud": "#dc3545",
                         "-> Legitimate": "#28a745",
                     },
                     orientation = "h",
@@ -552,8 +555,8 @@ elif page == "📄 Upload PDF":
 
 
 # PAGE: BATCH UPLOAD
-elif page == "📁 Batch Upload":
-    st.title("📁 Batch Claims Processing")
+elif page == "Batch Upload":
+    st.title("Batch Claims Processing")
     st.caption("Upload a CSV file to adjudicate multiple claims at once")
 
     st.download_button(
@@ -568,7 +571,7 @@ elif page == "📁 Batch Upload":
             "provider_claim_frequency": 8, "is_duplicate": 0,
         }]).to_csv(index=False),
         file_name = "sample_claims.csv",
-        mime      = "text/csv",
+        mime = "text/csv",
     )
 
     uploaded_csv = st.file_uploader("Upload CSV file", type=["csv"])
@@ -578,14 +581,14 @@ elif page == "📁 Batch Upload":
         st.write(f"Loaded {len(df)} claims")
         st.dataframe(df.head(5), width="stretch")
 
-        if st.button("⚡ Process All Claims", width="stretch"):
+        if st.button("  Process All Claims", width="stretch"):
             from engine.adjudicator import adjudicate
             import asyncio
             from db.mongo import save_adjudication_result
 
             results  = []
             progress = st.progress(0)
-            status   = st.empty()
+            status = st.empty()
 
             for i, (_, row) in enumerate(df.iterrows()):
                 raw = {
@@ -614,4 +617,4 @@ elif page == "📁 Batch Upload":
 
             decision_counts = results_df["decision"].value_counts()
             col1, col2, col3 = st.columns(3)
-            col1.metric("✅ Passed", decision_counts.get("Pass", 0))
+            col1.metric("Passed", decision_counts.get("Pass", 0))

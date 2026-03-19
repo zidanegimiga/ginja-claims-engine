@@ -6,7 +6,7 @@ from extraction.factory import get_vision_provider
 from extraction.validator import validate_extracted_claim
 import json
 
-# Change this to whichever PDF you want to test
+# Test PDF path
 pdf_path = "data/samples/Sharma Siddharth Claim Form.pdf"
 
 def test_provider(provider_name: str, model: str = None):

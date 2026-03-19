@@ -39,7 +39,7 @@ def extract_with_fallback(
 
     for provider_name in chain:
         try:
-            print(f"  Trying provider: {provider_name}")
+            print(f" Trying provider: {provider_name}")
             vision_provider = get_vision_provider(
                 provider_name,
                 model=model if provider_name == primary else None
@@ -77,8 +77,8 @@ def extract_with_fallback(
             print(f"  {provider_name} failed: {e}")
             attempts.append({
                 "provider": provider_name,
-                "success":  False,
-                "error":    str(e),
+                "success": False,
+                "error": str(e),
             })
             continue
 

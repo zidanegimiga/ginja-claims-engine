@@ -42,7 +42,7 @@ def run_stage_one(claim: dict) -> dict:
     - failures: list of specific failure reasons
     - checks_run: list of all checks attempted
     """
-    failures   = []
+    failures = []
     checks_run = []
 
     # Required fields present
@@ -119,9 +119,9 @@ def run_stage_one(claim: dict) -> dict:
         failures.append(f"Unrecognised provider type: {provider_type}")
 
     return {
-        "passed":     len(failures) == 0,
-        "stage":      1,
-        "failures":   failures,
+        "passed": len(failures) == 0,
+        "stage": 1,
+        "failures": failures,
         "checks_run": checks_run,
     }
     """
@@ -188,8 +188,8 @@ def run_stage_two(claim: dict) -> dict:
     # If line items were extracted, verify they add up
     # to the claimed amount. A mismatch is a fraud signal.
     checks_run.append("line_items_sum")
-    line_items    = claim.get("line_items") or []
-    claimed       = float(claim.get("claimed_amount") or 0)
+    line_items = claim.get("line_items") or []
+    claimed = float(claim.get("claimed_amount") or 0)
     if line_items and claimed > 0:
         try:
             line_total = sum(
@@ -218,10 +218,10 @@ def run_stage_two(claim: dict) -> dict:
         )
 
     return {
-        "passed":          len(failures) == 0,
-        "stage":           2,
-        "failures":        failures,
-        "hard_overrides":  hard_overrides,
-        "soft_flags":      soft_flags,
-        "checks_run":      checks_run,
+        "passed": len(failures) == 0,
+        "stage": 2,
+        "failures": failures,
+        "hard_overrides": hard_overrides,
+        "soft_flags": soft_flags,
+        "checks_run": checks_run,
     }

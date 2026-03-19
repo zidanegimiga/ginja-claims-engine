@@ -21,12 +21,13 @@ import hashlib
 from datetime import datetime, timezone
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from api.core.config import settings
 
 load_dotenv()
 
 
 def get_registry_collection():
-    client = MongoClient(os.getenv("MONGODB_URI"))
+    client = MongoClient(settings.MONGODB_URI)
     db = client[settings.MONGODB_DB_NAME]
     return db["model_registry"], client
 
