@@ -1,6 +1,6 @@
 # Development Journal: Ginja Claims Engine
 
-A comprehensive account of building the Ginja Claims Engine from scratch in a single session. This document covers every significant technical decision, the reasoning behind it, the bugs encountered, and what the production version of this system would look like differently.
+A comprehensive account of building the Ginja Claims Engine. This document covers every significant technical decision, the reasoning behind it, the bugs encountered, and what the production version of this system would look like differently.
 
 ---
 
@@ -58,11 +58,11 @@ Third, the amounts between the two documents do not always match. In the samples
 
 ## Architecture Decisions
 
-**Why FastAPI over Django or Flask?**
+**Why FastAPI**
 
-FastAPI gives async support, automatic OpenAPI documentation, Pydantic validation, and a dependency injection system out of the box. For an ML service that will have concurrent requests and needs clear API documentation for a frontend consumer, it was the right choice. Flask requires too much assembly. Django is too heavy for an API-only service.
+FastAPI gives async support, automatic OpenAPI documentation, Pydantic validation, and a dependency injection system out of the box. For an ML service that will have concurrent requests and needs clear API documentation for a frontend consumer, it was the right choice.
 
-**Why MongoDB over PostgreSQL?**
+**Why MongoDB**
 
 Claims data is semi-structured and variable. A claim from a paper form will have different fields present compared to a claim submitted as structured JSON. MongoDB's document model handles this naturally. Schema migrations are not needed when a new field appears in extracted data.
 
@@ -74,9 +74,9 @@ Three reasons. First, XGBoost works well on tabular data with engineered feature
 
 The deeper reason: explainability is not optional in healthcare adjudication. Every decision must be auditable. A black-box neural network that says "this claim is fraud because of latent features in layer 7" is not acceptable to an insurance regulator or a provider disputing a denial. SHAP values that say "the claimed amount was 194% above tariff, and the procedure code does not match the diagnosis" are.
 
-**Why Streamlit over a custom frontend?**
+**Why Streamlit**
 
-Time constraint. Streamlit lets you build a functional data dashboard without writing React components. The roadmap explicitly calls for a Next.js frontend. Streamlit is the right prototype tool when the priority is demonstrating the backend logic rather than polishing the UI.
+Streamlit was the right prototype tool when the priority was demonstrating the backend logic but I also resorted to trying out building the frontend.
 
 **The provider abstraction for PDF extraction:**
 
