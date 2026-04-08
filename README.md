@@ -1,8 +1,6 @@
 # Ginja Claims Engine
 
-This is an AI-powered healthcare claims adjudication system built for East African insurance markets. The system ingests paper claim forms and invoices via PDF upload, extracts structured data using vision models, validates the claim through a three-stage rules and machine learning pipeline, and returns a decision with a plain-English explanation.
-
-Built as a technical case study for Ginja AI / Eden Care.
+This is an Python REST API AI-powered healthcare claims adjudication system built for East African insurance markets. The system ingests paper claim forms and invoices via PDF upload, extracts structured data using vision models, validates the claim through a three-stage rules and machine learning pipeline, and returns a decision with a plain-English explanation.
 
 ---
 
