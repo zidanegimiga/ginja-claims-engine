@@ -102,11 +102,11 @@ def run_stage_one(claim: dict) -> dict:
                 failures.append(
                     "Date of service cannot be in the future"
                 )
-            checks_run.append("claim_not_stale")
-            if dos < datetime.now() - timedelta(days=MAX_CLAIM_AGE_DAYS):
-                failures.append(
-                    f"Claim is older than {MAX_CLAIM_AGE_DAYS} days"
-                )
+            # checks_run.append("claim_not_stale")
+            # if dos < datetime.now() - timedelta(days=MAX_CLAIM_AGE_DAYS):
+            #     failures.append(
+            #         f"Claim is older than {MAX_CLAIM_AGE_DAYS} days"
+            #     )
         except (ValueError, TypeError):
             failures.append(f"Invalid date format: {date_str}")
     else:

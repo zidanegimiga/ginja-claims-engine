@@ -111,7 +111,7 @@ brew install tesseract
 Clone the repository and copy the environment file:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ginja-claims-engine.git
+git clone https://github.com/zidane-gimiga/ginja-claims-engine.git
 cd ginja-claims-engine/apps/adjudication_engine
 cp .env.example .env
 ```
